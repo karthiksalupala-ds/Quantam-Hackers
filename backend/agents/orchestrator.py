@@ -21,7 +21,24 @@ from retrieval.pubmed_client import search_pubmed
 from retrieval.vector_store import store_papers, search_papers
 import database
 
+DEMO_PAPERS = [
+    {
+        "id": "demo-1", "title": "Effects of Intermittent Fasting on Health, Aging, and Disease",
+        "abstract": "Intermittent fasting (IF) could be a promising approach to improving public health...",
+        "authors": ["de Cabo, R.", "Mattson, M. P."], "year": 2019, "source": "PubMed",
+        "url": "https://www.nejm.org/doi/full/10.1056/NEJMra1905136"
+    },
+    {
+        "id": "demo-2", "title": "Calorie Restriction with or without Time-Restricted Eating in Weight Loss",
+        "abstract": "In this randomized controlled trial involving 139 patients with obesity, we found that...",
+        "authors": ["Liu, D.", "Huang, Y.", "et al."], "year": 2022, "source": "Semantic Scholar",
+        "url": "https://www.nejm.org/doi/full/10.1056/NEJMoa2114833"
+    }
+]
+
 DEMO_RESULT = {
+    "query_id": "demo-query-123",
+    "original_query": "Does intermittent fasting improve metabolic health?",
     "refined_question": "What is the empirical evidence for the relationship between intermittent fasting and metabolic health outcomes in adult humans?",
     "research_strategy": "This analysis examines multiple RCTs, systematic reviews, and observational cohort studies investigating intermittent fasting protocols (16:8, 5:2, ADF) and their effects on BMI, insulin sensitivity, lipid profiles, and inflammatory markers across diverse adult populations.",
     "key_evidence": "Evidence drawn from 8 retrieved papers spanning arXiv, Semantic Scholar, and PubMed databases, covering short-term (4-12 week) and medium-term (6-12 month) trials.",
@@ -31,13 +48,14 @@ DEMO_RESULT = {
     "critical_evaluation": "The supporting arguments rely heavily on short-term RCTs with high dropout rates. Many pro-IF claims extrapolate from weight loss data to broader metabolic benefits without direct biomarker measurement. The evidence base, while growing, remains insufficient for strong causal claims.",
     "research_gaps": "Gap: Long-term (>2 year) RCTs comparing IF to isocaloric continuous restriction are absent.\nGap: Mechanistic studies on circadian biology and metabolic regulation during IF are limited.\nGap: IF effects in populations with type 2 diabetes require more rigorous investigation.\nGap: Research on psychological and behavioral effects of fasting protocols is underrepresented.",
     "final_insight": "Current evidence suggests that intermittent fasting can produce meaningful short-term improvements in metabolic health markers including body weight, insulin sensitivity, and lipid profiles in otherwise healthy adults. However, these benefits appear comparable to those achieved through equivalent caloric restriction without fasting, suggesting the fasting mechanism per se may not be uniquely advantageous. Given the methodological limitations of existing trials—including short durations, small samples, and variable adherence—strong clinical recommendations cannot yet be made. Future research should prioritize long-term comparative trials with rigorous biomarker assessment.",
-    "evidence_score": {
+    "evidence_analysis": {
         "overall_score": 6.5,
         "paper_count": 8,
         "source_diversity": 8.0,
         "consistency_score": 5.5,
         "label": "Moderate"
-    }
+    },
+    "papers": DEMO_PAPERS
 }
 
 
@@ -57,6 +75,46 @@ class ResearchOrchestrator:
         """Full pipeline yielding SSE events at each step."""
         from config import get_settings
         settings = get_settings()
+
+        if settings.is_demo:
+            yield self._step_event("demo_mode", "running", "🤖 Running in Demo Mode (no API key found)...")
+            await asyncio.sleep(0.5)
+
+            demo_data = DEMO_RESULT.copy()
+            demo_data["original_query"] = request.query
+
+            # Simulate pipeline steps for a better UX
+            yield self._step_event("query_refinement", "running", "🔍 Refining Research Query...")
+            await asyncio.sleep(0.3)
+            yield self._step_event("query_refinement", "done", f"✅ Refined: {demo_data['refined_question'][:80]}...", {"refined_question": demo_data['refined_question']})
+
+            yield self._step_event("planning", "running", "⚙️ Planning Research Strategy...")
+            await asyncio.sleep(0.3)
+            yield self._step_event("planning", "done", "✅ Research strategy determined.", {"strategy": demo_data['research_strategy']})
+
+            yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers...")
+            await asyncio.sleep(0.3)
+            yield self._step_event("retrieval", "done", f"✅ Retrieved {len(demo_data['papers'])} papers.", {"paper_count": len(demo_data['papers'])})
+
+            steps = ["pro_arguments", "con_arguments", "evidence_analysis", "contradictions", "critique", "gaps", "final_insight"]
+            messages = {
+                "pro_arguments": "⚖️ Generating Supporting Arguments...", "con_arguments": "⚖️ Generating Counterarguments...",
+                "evidence_analysis": "📊 Evaluating Evidence Strength...", "contradictions": "🧠 Detecting Contradictions...",
+                "critique": "🔎 Critical Evaluation of Arguments...", "gaps": "🔬 Identifying Research Gaps...",
+                "final_insight": "📄 Producing Final Research Insight..."
+            }
+
+            for step in steps:
+                yield self._step_event(step, "running", messages[step])
+                await asyncio.sleep(0.3)
+                done_message = f"✅ {step.replace('_', ' ').capitalize()} complete."
+                if step == "evidence_analysis":
+                    done_message = f"✅ Evidence: {demo_data['evidence_analysis']['label']} ({demo_data['evidence_analysis']['overall_score']}/10)"
+                yield self._step_event(step, "done", done_message)
+
+            await asyncio.sleep(1)
+            yield {"event": "result", "data": demo_data}
+            return
 
         original_query = request.query
 
