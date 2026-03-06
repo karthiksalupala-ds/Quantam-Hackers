@@ -1,71 +1,41 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Virtual environments
-venv/
-ENV/
-env/
-.venv
-
-# Backend
-*.log
-*.db
-*.sqlite
-*.sqlite3
-.env
-.env.local
-.env.*.local
-backend/.env
-
-# Frontend
-node_modules/
-dist/
-dist-ssr/
-*.local
-
-# IDE
-.vscode/
+# IDE & Editor files
 .idea/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
 *.swp
 *.swo
-*~
 
-# OS
-.DS_Store
-Thumbs.db
+#node_modules/
+node_modules/
+frontend/node_modules/
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-# Environment and config
-*.env
-!.env.example
-
-# Cache
-.cache/
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-wheel-metadata/
+.eggs/
+*.egg-info/
+*.egg
 
+# Environment variables
+.env
+.env.*
+backend/.env.example
+backend/.env
+
+# Frontend (Vite / React)
+frontend/node_modules/
+frontend/dist/
+frontend/.pnp
+frontend/.pnp.js
+
+# OS-specific
+.DS_Store

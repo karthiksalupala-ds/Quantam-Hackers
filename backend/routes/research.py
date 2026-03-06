@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from models import ResearchRequest
 from agents.orchestrator import ResearchOrchestrator
 
-router = APIRouter(prefix="/api/research", tags=["research"])
+router = APIRouter()
 orchestrator = ResearchOrchestrator()
 
 

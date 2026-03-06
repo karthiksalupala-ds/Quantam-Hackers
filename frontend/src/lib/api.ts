@@ -2,7 +2,7 @@
 
 import type { AnalysisResult, PipelineStep, ResearchRequest } from './types';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export type OnStep = (step: PipelineStep) => void;
 export type OnResult = (result: AnalysisResult) => void;
@@ -61,7 +61,10 @@ export function analyzeResearch(
 
                     try {
                         const event = JSON.parse(jsonStr) as { event: string; data: unknown };
-                        if (event.event === 'step') onStep(event.data as PipelineStep);
+                        if (event.event === 'step') {
+                            const stepData = event.data as PipelineStep;
+                            onStep({ ...stepData, timestamp: Date.now() });
+                        }
                         if (event.event === 'result') onResult(event.data as AnalysisResult);
                         if (event.event === 'error') onError((event.data as { message: string }).message);
                         if (event.event === 'done') onDone();

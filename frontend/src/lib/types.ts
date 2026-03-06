@@ -42,6 +42,7 @@ export interface PipelineStep {
     status: 'pending' | 'running' | 'done' | 'error';
     message: string;
     data?: Record<string, unknown>;
+    timestamp?: number;
 }
 
 export interface SSEEvent {

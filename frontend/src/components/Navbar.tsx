@@ -21,7 +21,7 @@ export default function Navbar() {
                 {/* Nav links */}
                 <div className="flex items-center gap-2">
                     <a
-                        href="https://github.com"
+                        href="https://github.com/your-username/research-pilot" // TODO: Update this link
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-all"
@@ -30,7 +30,7 @@ export default function Navbar() {
                         <span className="hidden sm:inline">GitHub</span>
                     </a>
                     <a
-                        href="/docs"
+                        href="http://localhost:8000/docs"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-slate-400 hover:text-white hover:bg-white/5 transition-all"

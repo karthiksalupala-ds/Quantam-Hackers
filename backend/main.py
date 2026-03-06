@@ -26,9 +26,9 @@ app.add_middleware(
 )
 
 # Routers
-app.include_router(research.router)
-app.include_router(papers.router)
-app.include_router(queries.router)
+app.include_router(research.router, prefix="/research", tags=["Research"])
+app.include_router(papers.router, prefix="/papers", tags=["Papers"])
+app.include_router(queries.router, prefix="/queries", tags=["Queries"])
 
 
 @app.get("/", tags=["health"])
