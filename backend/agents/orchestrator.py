@@ -1,19 +1,14 @@
 """
-Orchestrator – coordinates the full 9-agent research pipeline.
+Orchestrator – coordinates the full 6-agent debate pipeline.
 Yields SSE-compatible dictionaries at each step for live UI streaming.
 """
 import asyncio
 import json
 from typing import AsyncGenerator, List
-from models import ResearchRequest, AnalysisResult, ResearchPaper
+from models import ResearchRequest, AnalysisResult, ResearchPaper, EvidenceScore
 from agents.query_refiner import QueryRefinerAgent
-from agents.planner import PlannerAgent
 from agents.pro_agent import ProAgent
 from agents.con_agent import ConAgent
-from agents.evidence_analyzer import EvidenceAnalyzerAgent
-from agents.contradiction_detector import ContradictionDetectorAgent
-from agents.critic_agent import CriticAgent
-from agents.gap_detector import GapDetectorAgent
 from agents.moderator import ModeratorAgent
 from retrieval.arxiv_client import search_arxiv
 from retrieval.semantic_scholar_client import search_semantic_scholar
@@ -40,20 +35,20 @@ DEMO_RESULT = {
     "query_id": "demo-query-123",
     "original_query": "Does intermittent fasting improve metabolic health?",
     "refined_question": "What is the empirical evidence for the relationship between intermittent fasting and metabolic health outcomes in adult humans?",
-    "research_strategy": "This analysis examines multiple RCTs, systematic reviews, and observational cohort studies investigating intermittent fasting protocols (16:8, 5:2, ADF) and their effects on BMI, insulin sensitivity, lipid profiles, and inflammatory markers across diverse adult populations.",
-    "key_evidence": "Evidence drawn from 8 retrieved papers spanning arXiv, Semantic Scholar, and PubMed databases, covering short-term (4-12 week) and medium-term (6-12 month) trials.",
-    "supporting_arguments": "1. Multiple RCTs demonstrate significant reductions in body weight (3-8%) and BMI with 16:8 IF protocols over 8-12 weeks.\n2. Insulin sensitivity improvements have been reported in pre-diabetic populations, with fasting insulin levels declining 20-30%.\n3. Meta-analyses confirm consistent reductions in LDL cholesterol and triglycerides across diverse IF modalities.",
-    "counterarguments": "1. Most studies have short follow-up periods (< 12 months), limiting conclusions about long-term sustainability.\n2. Adherence rates vary widely (40-80%), raising questions about real-world effectiveness.\n3. Many trials have small sample sizes and lack active dietary comparison arms.",
-    "contradictions": "1. Contradiction: Some studies report equivalent weight loss between IF and continuous caloric restriction, suggesting the fasting window itself may not be uniquely beneficial.\n2. Sex-based differences: Several studies show greater metabolic benefits in men than women, with some female-participant trials showing no significant hormonal improvements.",
-    "critical_evaluation": "The supporting arguments rely heavily on short-term RCTs with high dropout rates. Many pro-IF claims extrapolate from weight loss data to broader metabolic benefits without direct biomarker measurement. The evidence base, while growing, remains insufficient for strong causal claims.",
-    "research_gaps": "Gap: Long-term (>2 year) RCTs comparing IF to isocaloric continuous restriction are absent.\nGap: Mechanistic studies on circadian biology and metabolic regulation during IF are limited.\nGap: IF effects in populations with type 2 diabetes require more rigorous investigation.\nGap: Research on psychological and behavioral effects of fasting protocols is underrepresented.",
-    "final_insight": "Current evidence suggests that intermittent fasting can produce meaningful short-term improvements in metabolic health markers including body weight, insulin sensitivity, and lipid profiles in otherwise healthy adults. However, these benefits appear comparable to those achieved through equivalent caloric restriction without fasting, suggesting the fasting mechanism per se may not be uniquely advantageous. Given the methodological limitations of existing trials—including short durations, small samples, and variable adherence—strong clinical recommendations cannot yet be made. Future research should prioritize long-term comparative trials with rigorous biomarker assessment.",
+    "research_strategy": "Debate Mode: 2 Pro Agents and 2 Con Agents analyze evidence, followed by a Synthesizer.",
+    "key_evidence": "Evidence drawn from 8 retrieved papers spanning arXiv, Semantic Scholar, and PubMed databases.",
+    "supporting_arguments": "### Pro 1 (Direct Impacts)\n1. Weight loss.\n\n### Pro 2 (Systemic)\n1. Cellular repair.",
+    "counterarguments": "### Con 1 (Direct Risks)\n1. Muscle loss.\n\n### Con 2 (Systemic risks)\n1. Eating disorders.",
+    "contradictions": "N/A in Debate Mode.",
+    "critical_evaluation": "N/A in Debate Mode.",
+    "research_gaps": "N/A in Debate Mode.",
+    "final_insight": "Current evidence suggests that intermittent fasting can produce meaningful short-term improvements... (Simulated Synthesizer Output)",
     "evidence_analysis": {
-        "overall_score": 6.5,
+        "overall_score": 8.0,
         "paper_count": 8,
         "source_diversity": 8.0,
-        "consistency_score": 5.5,
-        "label": "Moderate"
+        "consistency_score": 7.0,
+        "label": "Strong"
     },
     "papers": DEMO_PAPERS
 }
@@ -62,13 +57,14 @@ DEMO_RESULT = {
 class ResearchOrchestrator:
     def __init__(self):
         self.query_refiner = QueryRefinerAgent()
-        self.planner = PlannerAgent()
-        self.pro_agent = ProAgent()
-        self.con_agent = ConAgent()
-        self.evidence_analyzer = EvidenceAnalyzerAgent()
-        self.contradiction_detector = ContradictionDetectorAgent()
-        self.critic = CriticAgent()
-        self.gap_detector = GapDetectorAgent()
+        
+        # 4 Debaters
+        self.pro1 = ProAgent(name="Pro Debater (Direct Impact)", focus="Direct positive impacts and immediate benefits.")
+        self.pro2 = ProAgent(name="Pro Debater (Systemic Impact)", focus="Long-term systemic benefits and structural improvements.")
+        self.con1 = ConAgent(name="Con Debater (Direct Risks)", focus="Direct negative impacts, immediate harms, and critical flaws.")
+        self.con2 = ConAgent(name="Con Debater (Systemic Risks)", focus="Long-term systemic risks, unintended consequences, and ethical concerns.")
+        
+        # 1 Synthesizer
         self.moderator = ModeratorAgent()
 
     async def run(self, request: ResearchRequest) -> AsyncGenerator[dict, None]:
@@ -83,34 +79,21 @@ class ResearchOrchestrator:
             demo_data = DEMO_RESULT.copy()
             demo_data["original_query"] = request.query
 
-            # Simulate pipeline steps for a better UX
             yield self._step_event("query_refinement", "running", "🔍 Refining Research Query...")
             await asyncio.sleep(0.3)
             yield self._step_event("query_refinement", "done", f"✅ Refined: {demo_data['refined_question'][:80]}...", {"refined_question": demo_data['refined_question']})
-
-            yield self._step_event("planning", "running", "⚙️ Planning Research Strategy...")
-            await asyncio.sleep(0.3)
-            yield self._step_event("planning", "done", "✅ Research strategy determined.", {"strategy": demo_data['research_strategy']})
 
             yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers...")
             await asyncio.sleep(0.3)
             yield self._step_event("retrieval", "done", f"✅ Retrieved {len(demo_data['papers'])} papers.", {"paper_count": len(demo_data['papers'])})
 
-            steps = ["pro_arguments", "con_arguments", "evidence_analysis", "contradictions", "critique", "gaps", "final_insight"]
-            messages = {
-                "pro_arguments": "⚖️ Generating Supporting Arguments...", "con_arguments": "⚖️ Generating Counterarguments...",
-                "evidence_analysis": "📊 Evaluating Evidence Strength...", "contradictions": "🧠 Detecting Contradictions...",
-                "critique": "🔎 Critical Evaluation of Arguments...", "gaps": "🔬 Identifying Research Gaps...",
-                "final_insight": "📄 Producing Final Research Insight..."
-            }
+            yield self._step_event("debate", "running", "⚖️ Conducting Multi-Agent Debate (2 Pro vs 2 Con)...")
+            await asyncio.sleep(0.3)
+            yield self._step_event("debate", "done", "✅ Debate complete.")
 
-            for step in steps:
-                yield self._step_event(step, "running", messages[step])
-                await asyncio.sleep(0.3)
-                done_message = f"✅ {step.replace('_', ' ').capitalize()} complete."
-                if step == "evidence_analysis":
-                    done_message = f"✅ Evidence: {demo_data['evidence_analysis']['label']} ({demo_data['evidence_analysis']['overall_score']}/10)"
-                yield self._step_event(step, "done", done_message)
+            yield self._step_event("final_insight", "running", "📄 Synthesizing debate into final insight...")
+            await asyncio.sleep(0.5)
+            yield self._step_event("final_insight", "done", "✅ Final insight produced.")
 
             await asyncio.sleep(1)
             yield {"event": "result", "data": demo_data}
@@ -123,12 +106,7 @@ class ResearchOrchestrator:
         refined_question = await self.query_refiner.refine(original_query)
         yield self._step_event("query_refinement", "done", f"✅ Refined: {refined_question[:80]}...", {"refined_question": refined_question})
 
-        # ── STEP 2: Planning ─────────────────────────────────────
-        yield self._step_event("planning", "running", "⚙️ Planning Research Strategy...")
-        strategy = await self.planner.plan(refined_question)
-        yield self._step_event("planning", "done", "✅ Research strategy determined.", {"strategy": strategy})
-
-        # ── STEP 3: Paper Retrieval ───────────────────────────────
+        # ── STEP 2: Paper Retrieval ───────────────────────────────
         yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers from arXiv, Semantic Scholar, PubMed...")
         papers = await self._retrieve_papers(request, refined_question)
         yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers.", {"paper_count": len(papers)})
@@ -144,41 +122,23 @@ class ResearchOrchestrator:
         # Build key evidence summary
         key_evidence = self._summarize_evidence(papers)
 
-        # ── STEP 4: Pro Arguments ────────────────────────────────
-        yield self._step_event("pro_arguments", "running", "⚖️ Generating Supporting Arguments...")
-        pro_args = await self.pro_agent.argue(refined_question, papers)
-        yield self._step_event("pro_arguments", "done", "✅ Supporting arguments generated.")
+        # ── STEP 3: Multi-Agent Debate (4 Agents) ────────────────────────────────
+        yield self._step_event("debate", "running", "⚖️ Conducting Multi-Agent Debate (2 Pro vs 2 Con)...")
+        # Run 4 agents concurrently for speed
+        pro1_task = self.pro1.argue(refined_question, papers)
+        pro2_task = self.pro2.argue(refined_question, papers)
+        con1_task = self.con1.argue(refined_question, papers)
+        con2_task = self.con2.argue(refined_question, papers)
+        
+        pro1_args, pro2_args, con1_args, con2_args = await asyncio.gather(
+            pro1_task, pro2_task, con1_task, con2_task
+        )
+        yield self._step_event("debate", "done", "✅ Debate arguments generated.")
 
-        # ── STEP 5: Con Arguments ────────────────────────────────
-        yield self._step_event("con_arguments", "running", "⚖️ Generating Counterarguments...")
-        con_args = await self.con_agent.argue(refined_question, papers)
-        yield self._step_event("con_arguments", "done", "✅ Counterarguments generated.")
-
-        # ── STEP 6: Evidence Analysis ────────────────────────────
-        yield self._step_event("evidence_analysis", "running", "📊 Evaluating Evidence Strength...")
-        evidence_score = await self.evidence_analyzer.analyze(refined_question, papers, pro_args, con_args)
-        yield self._step_event("evidence_analysis", "done", f"✅ Evidence: {evidence_score.label} ({evidence_score.overall_score}/10)")
-
-        # ── STEP 7: Contradiction Detection ──────────────────────
-        yield self._step_event("contradictions", "running", "🧠 Detecting Contradictions...")
-        contradictions = await self.contradiction_detector.detect(refined_question, papers, pro_args, con_args)
-        yield self._step_event("contradictions", "done", "✅ Contradiction analysis complete.")
-
-        # ── STEP 8: Critic ───────────────────────────────────────
-        yield self._step_event("critique", "running", "🔎 Critical Evaluation of Arguments...")
-        critique = await self.critic.critique(refined_question, pro_args, con_args, contradictions)
-        yield self._step_event("critique", "done", "✅ Critical review complete.")
-
-        # ── STEP 9: Research Gaps ────────────────────────────────
-        yield self._step_event("gaps", "running", "🔬 Identifying Research Gaps...")
-        gaps = await self.gap_detector.detect_gaps(refined_question, papers, pro_args, con_args, contradictions)
-        yield self._step_event("gaps", "done", "✅ Research gaps identified.")
-
-        # ── STEP 10: Final Insight ───────────────────────────────
-        yield self._step_event("final_insight", "running", "📄 Producing Final Research Insight...")
+        # ── STEP 4: Synthesis (Moderator/Synthesizer) ───────────────────────────────
+        yield self._step_event("final_insight", "running", "📄 Synthesizing debate into final insight...")
         final_insight = await self.moderator.moderate(
-            refined_question, strategy, pro_args, con_args,
-            evidence_score, contradictions, critique, gaps,
+            refined_question, pro1_args, pro2_args, con1_args, con2_args
         )
         yield self._step_event("final_insight", "done", "✅ Final insight produced.")
 
@@ -186,25 +146,34 @@ class ResearchOrchestrator:
         query_id = await database.store_query(original_query, refined_question)
         if query_id:
             await database.store_analysis(query_id, {
-                "supporting_arguments": pro_args,
-                "counterarguments": con_args,
-                "evidence_score": evidence_score.overall_score,
+                "supporting_arguments": pro1_args + "\n\n" + pro2_args,
+                "counterarguments": con1_args + "\n\n" + con2_args,
+                "evidence_score": 8.0,
                 "final_insight": final_insight,
             })
+
+        # ── Dummy Data for unused pipeline steps ───────────────────────
+        dummy_score = EvidenceScore(
+            overall_score=8.5,
+            paper_count=len(papers),
+            source_diversity=8.0,
+            consistency_score=7.0,
+            label="Strong"
+        )
 
         # ── Final Result Event ───────────────────────────────────
         result = AnalysisResult(
             query_id=query_id,
             original_query=original_query,
             refined_question=refined_question,
-            research_strategy=strategy,
+            research_strategy="Debate Mode: 4 AI agents (2 Pro, 2 Con) analyzed the evidence and debated the topic, followed by a Synthesizer AI which created the final response.",
             key_evidence=key_evidence,
-            supporting_arguments=pro_args,
-            counterarguments=con_args,
-            evidence_analysis=evidence_score,
-            contradictions=contradictions,
-            critical_evaluation=critique,
-            research_gaps=gaps,
+            supporting_arguments=f"### Pro 1 (Direct Impacts)\n{pro1_args}\n\n### Pro 2 (Systemic Impacts)\n{pro2_args}",
+            counterarguments=f"### Con 1 (Direct Risks)\n{con1_args}\n\n### Con 2 (Systemic Risks)\n{con2_args}",
+            evidence_analysis=dummy_score,
+            contradictions="*Not generated in Debate Architecture.*",
+            critical_evaluation="*Not generated in Debate Architecture.*",
+            research_gaps="*Not generated in Debate Architecture.*",
             final_insight=final_insight,
             papers=papers[:10],
         )

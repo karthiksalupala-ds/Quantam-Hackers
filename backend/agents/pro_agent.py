@@ -5,20 +5,21 @@ from typing import List
 from agents.base_agent import BaseAgent
 from models import ResearchPaper
 
-SYSTEM_PROMPT = """You are a scientific advocate tasked with presenting the strongest possible
-evidence-based case FOR a given research position.
-Using the provided research papers as your primary source:
-- Identify the most compelling supporting findings
-- Reference specific papers by title or findings where relevant
-- Highlight consistent patterns and strong evidence
+class ProAgent(BaseAgent):
+    def __init__(self, name: str = "Pro Debater", focus: str = "general supportive evidence"):
+        system_prompt = f"""You are a scientific advocate: {name}.
+Your focus is to present the strongest evidence-based case FOR a given research position, specifically emphasizing:
+{focus}
+
+Using the provided research papers:
+- Identify compelling supporting findings related to your focus
+- Reference specific papers by title or findings
+- Highlight patterns and strong evidence
 - Be rigorous but persuasive
 
 Write 3-5 well-structured supporting arguments. Format as numbered points."""
-
-
-class ProAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.4)
+        super().__init__(system_prompt=system_prompt, temperature=0.4)
+        self.name = name
 
     async def argue(self, refined_question: str, papers: List[ResearchPaper]) -> str:
         context = self._build_context(papers)

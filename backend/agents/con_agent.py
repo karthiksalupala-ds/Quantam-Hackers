@@ -5,20 +5,21 @@ from typing import List
 from agents.base_agent import BaseAgent
 from models import ResearchPaper
 
-SYSTEM_PROMPT = """You are a rigorous scientific critic tasked with presenting the strongest
-counterarguments, limitations, and opposing evidence for a research position.
+class ConAgent(BaseAgent):
+    def __init__(self, name: str = "Con Debater", focus: str = "general counterarguments and limitations"):
+        system_prompt = f"""You are a rigorous scientific critic: {name}.
+Your focus is to present the strongest counterarguments, limitations, and opposing evidence against a research position, specifically emphasizing:
+{focus}
+
 Using the provided research papers:
-- Identify methodological weaknesses and confounders
+- Identify methodological weaknesses and confounders related to your focus
 - Highlight conflicting findings or null results
 - Point out generalizability issues
 - Acknowledge what the evidence fails to establish
 
 Write 3-5 well-structured counterarguments. Format as numbered points."""
-
-
-class ConAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.4)
+        super().__init__(system_prompt=system_prompt, temperature=0.4)
+        self.name = name
 
     async def argue(self, refined_question: str, papers: List[ResearchPaper]) -> str:
         context = self._build_context(papers)

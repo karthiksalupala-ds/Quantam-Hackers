@@ -59,13 +59,7 @@ export interface ResearchRequest {
 // Pipeline step definitions (ordered)
 export const PIPELINE_STEPS: Array<{ id: string; icon: string; label: string }> = [
     { id: 'query_refinement', icon: '🔍', label: 'Refining Research Query' },
-    { id: 'planning', icon: '⚙️', label: 'Planning Research Strategy' },
     { id: 'retrieval', icon: '📚', label: 'Retrieving Research Papers' },
-    { id: 'pro_arguments', icon: '⚖️', label: 'Generating Supporting Arguments' },
-    { id: 'con_arguments', icon: '⚖️', label: 'Generating Counterarguments' },
-    { id: 'evidence_analysis', icon: '📊', label: 'Evaluating Evidence Strength' },
-    { id: 'contradictions', icon: '🧠', label: 'Detecting Contradictions' },
-    { id: 'critique', icon: '🔎', label: 'Critical Evaluation' },
-    { id: 'gaps', icon: '🔬', label: 'Identifying Research Gaps' },
-    { id: 'final_insight', icon: '📄', label: 'Producing Final Research Insight' },
+    { id: 'debate', icon: '⚖️', label: 'Conducting AI Debate (Pro vs Con)' },
+    { id: 'final_insight', icon: '📄', label: 'Synthesizing Argument into Insight' },
 ];

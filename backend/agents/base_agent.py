@@ -1,7 +1,4 @@
-"""
-Base agent – shared LLM call logic for all ResearchPilot agents.
-Supports Groq, OpenAI, OpenRouter, and Gemini providers.
-"""
+
 from typing import Optional
 from config import get_settings
 

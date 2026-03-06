@@ -4,44 +4,39 @@ Moderator Agent – synthesizes all agent outputs into a final balanced research
 from agents.base_agent import BaseAgent
 from models import EvidenceScore
 
-SYSTEM_PROMPT = """You are a senior research editor producing a final, authoritative research insight.
-Your task is to synthesize all analysis components into one balanced, nuanced conclusion.
+SYSTEM_PROMPT = """You are a master Synthesizer AI, combining information from multiple debaters into a final, comprehensive, and highly engaging response in the style of Perplexity or ChatGPT. 
 
-Your final insight should:
-- Acknowledge the strongest evidence on both sides
-- State the most defensible conclusion given the evidence
-- Note important caveats and conditions
-- Be written at a graduate academic level
-- Be 4-6 sentences, precise and impactful
+Your task is to review the refined user question, along with the distinct arguments provided by two Pro debaters and two Con debaters based on scientific literature.
 
-Do not use bullet points. Write continuous, coherent prose."""
+Your final output MUST:
+- Provide a clear, nuanced, and detailed academic answer to the user's question based on the debate.
+- Synthesize the strongest points from both the Pro and Con sides.
+- Constructively resolve conflicts where possible, and clearly highlight areas of true scientific uncertainty.
+- Clearly cite the synthesized evidence.
+- Be structured with clear markdown headings and bullet points for readability.
+- Be highly informative, objective, and authoritative.
+
+Do not just list the debaters' arguments. Weave them together to form a highly polished answer."""
 
 
 class ModeratorAgent(BaseAgent):
     def __init__(self):
-        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.3)
+        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.4)
 
     async def moderate(
         self,
         refined_question: str,
-        strategy: str,
-        pro_args: str,
-        con_args: str,
-        evidence_score: EvidenceScore,
-        contradictions: str,
-        critique: str,
-        gaps: str,
+        pro1_args: str,
+        pro2_args: str,
+        con1_args: str,
+        con2_args: str,
     ) -> str:
         prompt = (
-            f"Research Question: {refined_question}\n\n"
-            f"Research Strategy: {strategy}\n\n"
-            f"Supporting Arguments:\n{pro_args[:700]}\n\n"
-            f"Counterarguments:\n{con_args[:700]}\n\n"
-            f"Evidence Strength: {evidence_score.label} (Score: {evidence_score.overall_score}/10)\n"
-            f"Paper Count: {evidence_score.paper_count}\n\n"
-            f"Contradictions Found:\n{contradictions[:400]}\n\n"
-            f"Critical Evaluation:\n{critique[:400]}\n\n"
-            f"Research Gaps:\n{gaps[:400]}\n\n"
-            f"Produce the final balanced research insight:"
+            f"User's Question: {refined_question}\n\n"
+            f"--- Pro Argument 1 (Focus: Direct Impacts) ---\n{pro1_args[:1000]}\n\n"
+            f"--- Pro Argument 2 (Focus: Systemic/Long-term Impacts) ---\n{pro2_args[:1000]}\n\n"
+            f"--- Con Argument 1 (Focus: Direct Risks/Harms) ---\n{con1_args[:1000]}\n\n"
+            f"--- Con Argument 2 (Focus: Systemic/Long-term Risks) ---\n{con2_args[:1000]}\n\n"
+            f"Synthesize the debate into a comprehensive, Perplexity-style final response:"
         )
-        return await self._call_llm(prompt, max_tokens=700)
+        return await self._call_llm(prompt, max_tokens=1500)
