@@ -43,6 +43,7 @@ export interface PipelineStep {
     message: string;
     data?: Record<string, unknown>;
     timestamp?: number;
+    provider?: string;
 }
 
 export interface SSEEvent {
@@ -54,6 +55,7 @@ export interface ResearchRequest {
     query: string;
     max_papers?: number;
     sources?: string[];
+    user_id?: string;
 }
 
 // Pipeline step definitions (ordered)

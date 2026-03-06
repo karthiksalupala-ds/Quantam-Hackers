@@ -9,6 +9,7 @@ class ResearchRequest(BaseModel):
     query: str = Field(..., min_length=5, max_length=1000, description="User research query")
     max_papers: int = Field(default=10, ge=3, le=30)
     sources: List[str] = Field(default=["arxiv", "semantic_scholar", "pubmed"])
+    user_id: Optional[str] = Field(default=None, description="Optional Supabase user ID")
 
 
 # ── Paper Models ───────────────────────────────────────────────
@@ -32,6 +33,7 @@ class PipelineStep(BaseModel):
     status: str  # running | done | error
     message: str
     data: Optional[dict] = None
+    provider: Optional[str] = None
 
 
 # ── Analysis Output Models ─────────────────────────────────────

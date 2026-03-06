@@ -15,10 +15,10 @@ Return ONLY the refined research question as a single sentence. No explanations,
 
 
 class QueryRefinerAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.2)
+    def __init__(self, provider: str = None):
+        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.2, provider=provider)
 
-    async def refine(self, user_query: str) -> str:
+    async def refine(self, user_query: str) -> tuple[str, str]:
         prompt = f"User query: {user_query}\n\nRefine this into a precise academic research question:"
-        result = await self._call_llm(prompt, max_tokens=200)
-        return result.strip().strip('"').strip("'")
+        result, provider = await self._call_llm(prompt, max_tokens=200)
+        return result.strip().strip('"').strip("'"), provider

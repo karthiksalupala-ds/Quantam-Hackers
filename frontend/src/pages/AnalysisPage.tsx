@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import type { AnalysisResult, PipelineStep } from '../lib/types';
 import { analyzeResearch } from '../lib/api';
 import SearchBar from '../components/SearchBar';
@@ -10,6 +11,7 @@ import { ArrowLeft, RotateCcw, AlertCircle } from 'lucide-react';
 export default function AnalysisPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const initialQuery = (location.state as { query?: string })?.query ?? '';
 
     const [query, setQuery] = useState(initialQuery);
@@ -29,8 +31,14 @@ export default function AnalysisPage() {
         setError(null);
         setIsLoading(true);
 
+        const requestPayload = {
+            query: q,
+            max_papers: 12,
+            ...(user?.id ? { user_id: user.id } : {})
+        };
+
         const cleanup = analyzeResearch(
-            { query: q, max_papers: 12 },
+            requestPayload,
             (step: PipelineStep) => {
                 setSteps(prev => ({ ...prev, [step.step]: step }));
             },

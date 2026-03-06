@@ -1,28 +1,35 @@
 # ResearchPilot 🔬
-**Agentic AI-Powered Research Intelligence Engine**
 
-ResearchPilot is a full-stack AI system that retrieves academic papers from arXiv, Semantic Scholar, and PubMed, then runs a 9-agent reasoning pipeline to produce structured, evidence-based research insights.
+**Advanced Agentic AI-Powered Research Intelligence Engine**
+
+ResearchPilot is a sophisticated, full-stack AI research platform designed to provide balanced, evidence-based insights. Unlike traditional search engines, it utilizes a **Multi-Agent Debate Pipeline** to analyze information from both academic and web sources, providing a truly comprehensive perspective.
 
 ---
 
-## Quick Start
+## ✨ Key Features
+
+- **🛡️ Resilience & Reliability**: Built-in LLM fallback mechanism. If one provider (Groq, OpenAI, Gemini, OpenRouter) fails, the system automatically switches to another to ensure uninterrupted analysis.
+- **⚖️ Multi-Agent Debate**: Uses a 5-agent pipeline (Pro vs. Con) to critically evaluate research evidence and synthesize a balanced executive summary.
+- **🔍 Hybrid Retrieval (RAG)**: Integrates real-time data from **arXiv**, **Semantic Scholar**, **PubMed**, and **Google Search** (via Serper.dev).
+- **💎 Premium Perplexity-Style UI**: A state-of-the-art dark-glass interface featuring animated reasoning "thought" bubbles and high-impact hero result cards.
+- **⚡ High Performance**: Powered by **Groq Llama-3.3 70B** for near-instantaneous reasoning and response generation.
+
+---
+
+## 🚀 Quick Start
 
 ### 1. Backend
 
 ```bash
 cd backend
 
-# Copy and fill in your environment variables
-copy .env.example .env
+# Copy and fill in your API keys
+cp .env.example .env
 
-# Install dependencies
+# Install dependencies and start
 pip install -r requirements.txt
-
-# Start the API server
 uvicorn main:app --reload --port 8000
 ```
-
-Visit `http://localhost:8000/docs` for Swagger UI.
 
 ### 2. Frontend
 
@@ -32,90 +39,59 @@ npm install
 npm run dev
 ```
 
-Visit `http://localhost:5173`
+Visit `http://localhost:5173` to start researching.
 
 ---
 
-## Environment Variables (`.env`)
+## 🧩 Agentic Architecture
 
-| Variable | Required | Description |
-|---|---|---|
-| `GROQ_API_KEY` | ✅ | Groq Llama-3.3-70B (recommended, free tier available) |
-| `OPENAI_API_KEY` | Optional | OpenAI GPT-4o-mini fallback |
-| `OPENROUTER_API_KEY` | Optional | OpenRouter multi-model access |
-| `GOOGLE_API_KEY` | Optional | Gemini 1.5 Flash |
-| `SUPABASE_URL` | Optional | Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Optional | Supabase service role key |
-| `LLM_PROVIDER` | Optional | `groq` \| `openai` \| `openrouter` \| `gemini` (default: `groq`) |
-| `EMBEDDING_PROVIDER` | Optional | `huggingface` \| `openai` (default: `huggingface`) |
+ResearchPilot operates as a coordinated "Intelligence Unit":
 
-> **Note**: If no LLM key is configured, the system auto-enables **Demo Mode** (returns placeholder responses).
+1.  **Query Refiner (OpenAI)**: Transmutes vague queries into precise academic research questions.
+2.  **Hybrid Retrieval**: Concurrently pulls data from Academic (arXiv, SS, PubMed) and Web (Google Search) sources.
+3.  **The Debate (Groq/Gemini/OpenRouter)**:
+    -   **Pro Agents**: Focus on direct and systemic benefits.
+    -   **Con Agents**: Focus on direct and systemic risks/limitations.
+4.  **Moderator (OpenAI)**: Synthesizes the 4-way debate into a single, high-fidelity Executive Summary.
 
 ---
 
-## Supabase Setup (Optional but Recommended)
-
-1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. In the **SQL Editor**, run:
-   ```sql
-   -- Copy contents of: backend/db/migrations/001_initial.sql
-   ```
-3. Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in your `.env`
-
-> Without Supabase, the system uses an in-memory vector store for the session.
-
----
-
-## Architecture
-
-```
-User Query
-    │
-    ▼
-Orchestrator (FastAPI SSE stream)
-    │
-    ├─► Query Refiner Agent      → Precise academic question
-    ├─► Planner Agent            → Research strategy
-    ├─► RAG Retrieval            → arXiv + Semantic Scholar + PubMed
-    ├─► Pro Agent                → Supporting arguments
-    ├─► Con Agent                → Counterarguments
-    ├─► Evidence Analyzer        → Evidence strength score
-    ├─► Contradiction Detector   → Conflicting findings
-    ├─► Critic Agent             → Argument quality review
-    ├─► Gap Detector             → Unexplored research areas
-    └─► Moderator Agent          → Final balanced insight
-```
-
----
-
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Frontend | React 18 + TypeScript + TailwindCSS + Vite |
-| Backend | Python + FastAPI + SSE streaming |
-| LLM | Groq Llama-3.3-70B (primary) |
-| Embeddings | HuggingFace all-MiniLM-L6-v2 (default, free) |
-| Database | Supabase PostgreSQL + pgvector |
-| Paper Sources | arXiv · Semantic Scholar · PubMed |
+| :--- | :--- |
+| **Frontend** | React 18 · TypeScript · TailwindCSS · Lucide Icons |
+| **Backend** | Python · FastAPI · SSE Streaming · Pydantic |
+| **Intelligence** | Groq (Llama-3) · OpenAI (GPT-4o) · Google (Gemini) · OpenRouter |
+| **Data Storage** | Supabase · PostgreSQL · pgvector |
+| **Search** | Serper.dev · arXiv API · Semantic Scholar API |
 
 ---
 
-## Project Structure
+## 🔑 Environment Variables
 
-```
+| Variable | Description |
+| :--- | :--- |
+| `GROQ_API_KEY` | High-speed Llama-3.3 reasoning. |
+| `OPENAI_API_KEY` | Precision synthesis and query refinement. |
+| `GOOGLE_API_KEY` | Diverse research perspective via Gemini. |
+| `OPENROUTER_API_KEY` | Access to 100+ open-source models. |
+| `SERPER_API_KEY` | Google Search integration for web insights. |
+
+---
+
+## 📁 Project Structure
+
+```text
 ResearchPilot/
 ├── backend/
-│   ├── main.py              # FastAPI entry point
-│   ├── config.py            # Settings
-│   ├── models.py            # Pydantic models
-│   ├── database.py          # Supabase client
-│   ├── agents/              # 9 reasoning agents + orchestrator
-│   ├── retrieval/           # arXiv, SS, PubMed clients + embeddings
-│   ├── routes/              # API endpoints
-│   └── db/migrations/       # SQL migration for Supabase
+│   ├── agents/          # Agent Logic (Pro/Con/Moderator/fallback)
+│   ├── retrieval/       # Multi-source API clients (ArXiv/Google/PubMed)
+│   ├── database.py      # Supabase & Vector Storage
+│   └── models.py        # Pydantic Schemas
 └── frontend/
-    └── src/
-        ├── components/      # Navbar, SearchBar, ReasoningPipeline, etc.
-        ├── pages/           # HomePage, AnalysisPage
-        └── lib/             # API client, TypeScript types
+    ├── src/components/  # Premium UI (ReasoningPipeline/SettingsModal)
+    └── src/pages/       # Glassmorphic Routing
+```
+
+Developed with ❤️ for researchers who value balance over bias.

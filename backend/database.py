@@ -72,15 +72,19 @@ async def similarity_search(embedding: List[float], limit: int = 10) -> List[Res
 
 # ── Query Storage ───────────────────────────────────────────────
 
-async def store_query(user_query: str, refined_query: str) -> Optional[str]:
+async def store_query(user_query: str, refined_query: str, user_id: Optional[str] = None) -> Optional[str]:
     client = get_supabase()
     if not client:
         return None
     try:
-        result = client.table("research_queries").insert({
+        data = {
             "user_query": user_query,
             "refined_query": refined_query,
-        }).execute()
+        }
+        if user_id:
+            data["user_id"] = user_id
+            
+        result = client.table("research_queries").insert(data).execute()
         if result.data:
             return result.data[0].get("id")
     except Exception as e:
@@ -106,14 +110,16 @@ async def store_analysis(query_id: str, analysis: dict) -> bool:
         return False
 
 
-async def get_queries(limit: int = 20) -> List[dict]:
+async def get_queries(limit: int = 20, user_id: Optional[str] = None) -> List[dict]:
     client = get_supabase()
     if not client:
         return []
     try:
-        result = client.table("research_queries").select("*").order(
-            "timestamp", desc=True
-        ).limit(limit).execute()
+        query = client.table("research_queries").select("*")
+        if user_id:
+            query = query.eq("user_id", user_id)
+            
+        result = query.order("timestamp", desc=True).limit(limit).execute()
         return result.data or []
     except Exception as e:
         print(f"[DB] Error fetching queries: {e}")

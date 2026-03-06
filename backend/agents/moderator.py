@@ -20,8 +20,8 @@ Do not just list the debaters' arguments. Weave them together to form a highly p
 
 
 class ModeratorAgent(BaseAgent):
-    def __init__(self):
-        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.4)
+    def __init__(self, provider: str = None):
+        super().__init__(system_prompt=SYSTEM_PROMPT, temperature=0.4, provider=provider)
 
     async def moderate(
         self,
@@ -30,7 +30,7 @@ class ModeratorAgent(BaseAgent):
         pro2_args: str,
         con1_args: str,
         con2_args: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         prompt = (
             f"User's Question: {refined_question}\n\n"
             f"--- Pro Argument 1 (Focus: Direct Impacts) ---\n{pro1_args[:1000]}\n\n"

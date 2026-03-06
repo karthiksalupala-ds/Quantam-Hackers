@@ -12,25 +12,42 @@
     --glow-purple: rgba(124, 58, 237, 0.3);
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
-  html { scroll-behavior: smooth; }
+  html {
+    scroll-behavior: smooth;
+  }
 
   body {
     @apply bg-surface-900 text-slate-100 font-sans antialiased;
     background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(76, 110, 245, 0.15), transparent),
-                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124, 58, 237, 0.08), transparent),
-                #0a0f1e;
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124, 58, 237, 0.08), transparent),
+      #0a0f1e;
     min-height: 100vh;
   }
 
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-surface-400 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-brand-600; }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-400 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-brand-600;
+  }
 }
 
 @layer components {
+
   /* Glass card */
   .glass {
     background: rgba(13, 20, 38, 0.7);
@@ -63,7 +80,7 @@
 
   /* Shimmer loading */
   .shimmer {
-    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0) 100%);
     background-size: 200% 100%;
     animation: shimmer 2s linear infinite;
   }
@@ -79,16 +96,20 @@
 
   /* Button */
   .btn-primary {
-    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm
-           transition-all duration-200 overflow-hidden;
+    @apply relative inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-200 overflow-hidden;
     background: linear-gradient(135deg, #4c6ef5, #7c3aed);
     box-shadow: 0 4px 20px rgba(76, 110, 245, 0.35);
   }
+
   .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 8px 30px rgba(76, 110, 245, 0.5);
   }
-  .btn-primary:active { transform: translateY(0); }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
   .btn-primary:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -96,15 +117,34 @@
   }
 
   /* Source badge */
-  .badge-arxiv       { @apply bg-orange-500/20 text-orange-300 border border-orange-500/30; }
-  .badge-semantic    { @apply bg-blue-500/20 text-blue-300 border border-blue-500/30; }
-  .badge-pubmed      { @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/30; }
+  .badge-arxiv {
+    @apply bg-orange-500/20 text-orange-300 border border-orange-500/30;
+  }
+
+  .badge-semantic {
+    @apply bg-blue-500/20 text-blue-300 border border-blue-500/30;
+  }
+
+  .badge-pubmed {
+    @apply bg-emerald-500/20 text-emerald-300 border border-emerald-500/30;
+  }
 
   /* Step status colors */
-  .step-running { @apply text-brand-400; }
-  .step-done    { @apply text-emerald-400; }
-  .step-pending { @apply text-slate-500; }
-  .step-error   { @apply text-red-400; }
+  .step-running {
+    @apply text-brand-400;
+  }
+
+  .step-done {
+    @apply text-emerald-400;
+  }
+
+  .step-pending {
+    @apply text-slate-500;
+  }
+
+  .step-error {
+    @apply text-red-400;
+  }
 }
 
 /* Animated gradient background for hero */
@@ -117,8 +157,75 @@
 
 /* Orbit animation for logo */
 @keyframes orbit {
-  from { transform: rotate(0deg) translateX(28px) rotate(0deg); }
-  to   { transform: rotate(360deg) translateX(28px) rotate(-360deg); }
+  from {
+    transform: rotate(0deg) translateX(28px) rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg) translateX(28px) rotate(-360deg);
+  }
 }
-.orbit { animation: orbit 4s linear infinite; }
-.orbit-reverse { animation: orbit 6s linear infinite reverse; }
+
+.orbit {
+  animation: orbit 4s linear infinite;
+}
+
+.orbit-reverse {
+  animation: orbit 6s linear infinite reverse;
+}
+
+/* Perplexity-style Pulsing Ring */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+}
+
+.pulse-ring {
+  animation: pulse-ring 2s ease-in-out infinite;
+}
+
+/* Typing Reveal */
+@keyframes reveal-text {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal-text {
+  animation: reveal-text 0.5s ease-out forwards;
+}
+
+/* Reasoning Popup Animation */
+@keyframes message-popup {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.message-popup {
+  animation: message-popup 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

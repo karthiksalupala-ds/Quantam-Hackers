@@ -84,8 +84,9 @@ export function analyzeResearch(
 }
 
 /** Fetch recent query history */
-export async function fetchQueryHistory(): Promise<unknown[]> {
-    const res = await fetch(`${API_BASE}/queries/`);
+export async function fetchQueryHistory(user_id?: string): Promise<unknown[]> {
+    const url = user_id ? `${API_BASE}/history?user_id=${user_id}` : `${API_BASE}/queries/`;
+    const res = await fetch(url);
     if (!res.ok) return [];
     return res.json();
 }

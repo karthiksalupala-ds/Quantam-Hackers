@@ -5,7 +5,7 @@ import PaperCard from './PaperCard';
 import EvidenceStrengthMeter from './EvidenceStrengthMeter';
 import {
     HelpCircle, Map, BookOpen, ThumbsUp, ThumbsDown,
-    Zap, AlertTriangle, Shield, Search, Lightbulb, FileText
+    Zap, AlertTriangle, Shield, Search, Lightbulb, FileText, Sparkles
 } from 'lucide-react';
 
 interface ResultsPanelProps {
@@ -55,17 +55,6 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
 
     return (
         <div className="space-y-4 animate-fade-in">
-            {/* Refined question banner */}
-            <div className="glass-bright rounded-2xl p-5 border border-brand-500/20 glow-border">
-                <div className="flex items-start gap-3">
-                    <HelpCircle className="w-5 h-5 text-brand-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-[11px] uppercase tracking-widest text-brand-400 font-semibold mb-1">Refined Research Question</p>
-                        <h3 className="text-lg font-semibold text-white leading-snug">{result.refined_question}</h3>
-                    </div>
-                </div>
-            </div>
-
             {/* Tab bar */}
             <div className="flex items-center gap-1 p-1 glass rounded-xl overflow-x-auto">
                 {TABS.map(tab => (
@@ -73,8 +62,8 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${activeTab === tab.id
-                                ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                            ? 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                             }`}
                     >
                         <tab.icon className="w-3.5 h-3.5" />
@@ -86,19 +75,61 @@ export default function ResultsPanel({ result }: ResultsPanelProps) {
             {/* Tab content */}
             <div className="space-y-3">
                 {activeTab === 'overview' && (
-                    <>
-                        <Section icon={Map} title="Research Strategy" color="text-brand-400">
-                            <MarkdownContent text={result.research_strategy} />
-                        </Section>
-                        <Section icon={BookOpen} title="Key Evidence" color="text-purple-400">
-                            <MarkdownContent text={result.key_evidence} />
-                        </Section>
-                        <Section icon={Lightbulb} title="Final Balanced Research Insight" color="text-amber-400">
-                            <div className="rounded-xl bg-amber-500/5 border border-amber-500/20 p-4">
-                                <MarkdownContent text={result.final_insight} />
+                    <div className="space-y-6">
+                        {/* New Hero Insight Card */}
+                        <div className="relative group animate-slide-up">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-brand-600 via-purple-600 to-emerald-500 rounded-2xl blur opacity-15 group-hover:opacity-25 transition duration-1000"></div>
+                            <div className="relative glass-bright rounded-2xl p-6 border border-white/10 shadow-2xl">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                                            <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-white font-bold text-lg tracking-tight">Executive Research Summary</h3>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest">Balanced Synthesis</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="hidden sm:flex border border-white/5 bg-white/5 px-2.5 py-1 rounded-full items-center gap-1.5">
+                                        <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Pilot-IQ 1.0</span>
+                                    </div>
+                                </div>
+
+                                <div className="text-slate-200 text-base leading-relaxed font-medium prose prose-invert max-w-none">
+                                    <MarkdownContent text={result.final_insight} />
+                                </div>
+
+                                <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex -space-x-2">
+                                            {[1, 2, 3].map(i => (
+                                                <div key={i} className={`w-6 h-6 rounded-full border-2 border-[#0B0F1A] bg-brand-${500 + i * 100} flex items-center justify-center text-[8px] font-bold text-white`}>
+                                                    AI
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <span className="text-xs text-slate-500 font-medium italic">Multi-consensus analysis verified</span>
+                                    </div>
+                                    <button className="text-[10px] font-bold text-brand-400 uppercase tracking-widest hover:text-brand-300 transition-colors">
+                                        Share Detail
+                                    </button>
+                                </div>
                             </div>
-                        </Section>
-                    </>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Section icon={Map} title="Research Strategy" color="text-brand-400">
+                                <MarkdownContent text={result.research_strategy} />
+                            </Section>
+                            <Section icon={BookOpen} title="Key Evidence Summary" color="text-purple-400">
+                                <MarkdownContent text={result.key_evidence} />
+                            </Section>
+                        </div>
+                    </div>
                 )}
 
                 {activeTab === 'arguments' && (

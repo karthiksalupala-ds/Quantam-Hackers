@@ -1,14 +1,16 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+from pydantic import Field
 
 
 class Settings(BaseSettings):
     # LLM
     groq_api_key: str = ""
     openai_api_key: str = ""
-    openrouter_api_key: str = ""
-    google_api_key: str = ""
-    huggingface_api_token: str = ""
+    openrouter_api_key: str = Field(default="")
+    google_api_key: str = Field(default="")
+    serper_api_key: str = Field(default="")
+    huggingface_api_token: str = Field(default="")
 
     llm_provider: str = "groq"
     llm_model: str = "llama-3.3-70b-versatile"

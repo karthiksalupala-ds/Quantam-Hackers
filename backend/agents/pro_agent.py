@@ -6,7 +6,7 @@ from agents.base_agent import BaseAgent
 from models import ResearchPaper
 
 class ProAgent(BaseAgent):
-    def __init__(self, name: str = "Pro Debater", focus: str = "general supportive evidence"):
+    def __init__(self, name: str = "Pro Debater", focus: str = "general supportive evidence", provider: str = None):
         system_prompt = f"""You are a scientific advocate: {name}.
 Your focus is to present the strongest evidence-based case FOR a given research position, specifically emphasizing:
 {focus}
@@ -18,10 +18,10 @@ Using the provided research papers:
 - Be rigorous but persuasive
 
 Write 3-5 well-structured supporting arguments. Format as numbered points."""
-        super().__init__(system_prompt=system_prompt, temperature=0.4)
+        super().__init__(system_prompt=system_prompt, temperature=0.4, provider=provider)
         self.name = name
 
-    async def argue(self, refined_question: str, papers: List[ResearchPaper]) -> str:
+    async def argue(self, refined_question: str, papers: List[ResearchPaper]) -> tuple[str, str]:
         context = self._build_context(papers)
         prompt = (
             f"Research Question: {refined_question}\n\n"

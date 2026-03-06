@@ -42,3 +42,18 @@ async def analyze_research(request: ResearchRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+@router.get("/history")
+async def get_history(user_id: str, limit: int = 20):
+    """Fetch saved research history for a user."""
+    import database
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+        
+    queries = await database.get_queries(limit=limit, user_id=user_id)
+    
+    # Optional: fetch analysis for these queries if needed, 
+    # but returning the queries is a good start.
+    return {"queries": queries}
+

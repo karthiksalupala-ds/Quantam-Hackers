@@ -13,6 +13,7 @@ from agents.moderator import ModeratorAgent
 from retrieval.arxiv_client import search_arxiv
 from retrieval.semantic_scholar_client import search_semantic_scholar
 from retrieval.pubmed_client import search_pubmed
+from retrieval.google_search_client import search_google
 from retrieval.vector_store import store_papers, search_papers
 import database
 
@@ -56,16 +57,33 @@ DEMO_RESULT = {
 
 class ResearchOrchestrator:
     def __init__(self):
-        self.query_refiner = QueryRefinerAgent()
+        # We assign 5 different providers across the 6 agents to utilize the user's keys
+        self.query_refiner = QueryRefinerAgent(provider="openai") # OpenAI for precise refinement
         
-        # 4 Debaters
-        self.pro1 = ProAgent(name="Pro Debater (Direct Impact)", focus="Direct positive impacts and immediate benefits.")
-        self.pro2 = ProAgent(name="Pro Debater (Systemic Impact)", focus="Long-term systemic benefits and structural improvements.")
-        self.con1 = ConAgent(name="Con Debater (Direct Risks)", focus="Direct negative impacts, immediate harms, and critical flaws.")
-        self.con2 = ConAgent(name="Con Debater (Systemic Risks)", focus="Long-term systemic risks, unintended consequences, and ethical concerns.")
+        # 4 Debaters using different models for diversity of thought
+        self.pro1 = ProAgent(
+            name="Pro Debater 1", 
+            focus="Direct positive impacts and immediate benefits.",
+            provider="groq"
+        )
+        self.pro2 = ProAgent(
+            name="Pro Debater 2", 
+            focus="Long-term systemic benefits and structural improvements.",
+            provider="gemini"
+        )
+        self.con1 = ConAgent(
+            name="Con Debater 1", 
+            focus="Direct negative impacts, immediate harms, and critical flaws.",
+            provider="openrouter"
+        )
+        self.con2 = ConAgent(
+            name="Con Debater 2", 
+            focus="Long-term systemic risks, unintended consequences, and ethical concerns.",
+            provider="groq" # Using Groq again as it is fast and versatile
+        )
         
         # 1 Synthesizer
-        self.moderator = ModeratorAgent()
+        self.moderator = ModeratorAgent(provider="openai") # OpenAI for high-quality synthesis
 
     async def run(self, request: ResearchRequest) -> AsyncGenerator[dict, None]:
         """Full pipeline yielding SSE events at each step."""
@@ -102,14 +120,14 @@ class ResearchOrchestrator:
         original_query = request.query
 
         # ── STEP 1: Query Refinement ────────────────────────────
-        yield self._step_event("query_refinement", "running", "🔍 Refining Research Query...")
-        refined_question = await self.query_refiner.refine(original_query)
-        yield self._step_event("query_refinement", "done", f"✅ Refined: {refined_question[:80]}...", {"refined_question": refined_question})
+        yield self._step_event("query_refinement", "running", "🔍 Refining Research Query...", provider="openai")
+        refined_question, refiner_provider = await self.query_refiner.refine(original_query)
+        yield self._step_event("query_refinement", "done", f"✅ Refined: {refined_question[:80]}...", {"refined_question": refined_question}, provider=refiner_provider)
 
         # ── STEP 2: Paper Retrieval ───────────────────────────────
-        yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers from arXiv, Semantic Scholar, PubMed...")
+        yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers from arXiv, Semantic Scholar, PubMed & Web Articles...")
         papers = await self._retrieve_papers(request, refined_question)
-        yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers.", {"paper_count": len(papers)})
+        yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers and articles.", {"paper_count": len(papers)})
 
         if not papers:
             # Fallback to stored vector search
@@ -123,27 +141,37 @@ class ResearchOrchestrator:
         key_evidence = self._summarize_evidence(papers)
 
         # ── STEP 3: Multi-Agent Debate (4 Agents) ────────────────────────────────
-        yield self._step_event("debate", "running", "⚖️ Conducting Multi-Agent Debate (2 Pro vs 2 Con)...")
-        # Run 4 agents concurrently for speed
-        pro1_task = self.pro1.argue(refined_question, papers)
-        pro2_task = self.pro2.argue(refined_question, papers)
-        con1_task = self.con1.argue(refined_question, papers)
-        con2_task = self.con2.argue(refined_question, papers)
+        yield self._step_event("debate", "running", "⚖️ Conducting Multi-Agent Debate (Mixed Models)...", provider="multi")
         
-        pro1_args, pro2_args, con1_args, con2_args = await asyncio.gather(
-            pro1_task, pro2_task, con1_task, con2_task
+        # Run 4 agents concurrently for speed
+        results = await asyncio.gather(
+            self.pro1.argue(refined_question, papers),
+            self.pro2.argue(refined_question, papers),
+            self.con1.argue(refined_question, papers),
+            self.con2.argue(refined_question, papers)
         )
-        yield self._step_event("debate", "done", "✅ Debate arguments generated.")
+        
+        (pro1_args, pro1_p), (pro2_args, pro2_p), (con1_args, con1_p), (con2_args, con2_p) = results
+        
+        # Attribute responses for transparency (using actual provider used)
+        pro1_out = f"**[{pro1_p.upper()}]** {pro1_args}"
+        pro2_out = f"**[{pro2_p.upper()}]** {pro2_args}"
+        con1_out = f"**[{con1_p.upper()}]** {con1_args}"
+        con2_out = f"**[{con2_p.upper()}]** {con2_args}"
+
+        yield self._step_event("debate", "done", f"✅ Debate complete using fallback-enabled pipeline.", provider="multi")
 
         # ── STEP 4: Synthesis (Moderator/Synthesizer) ───────────────────────────────
-        yield self._step_event("final_insight", "running", "📄 Synthesizing debate into final insight...")
-        final_insight = await self.moderator.moderate(
+        yield self._step_event("final_insight", "running", "📄 Synthesizing debate into final insight...", provider="openai")
+        final_insight, mod_provider = await self.moderator.moderate(
             refined_question, pro1_args, pro2_args, con1_args, con2_args
         )
-        yield self._step_event("final_insight", "done", "✅ Final insight produced.")
+        yield self._step_event("final_insight", "done", "✅ Final insight produced.", provider=mod_provider)
 
         # ── Store in Supabase ────────────────────────────────────
-        query_id = await database.store_query(original_query, refined_question)
+        # Get optional user_id from the request via headers down the line, 
+        # but for now we'll accept it via the ResearchRequest model
+        query_id = await database.store_query(original_query, refined_question, user_id=request.user_id)
         if query_id:
             await database.store_analysis(query_id, {
                 "supporting_arguments": pro1_args + "\n\n" + pro2_args,
@@ -168,8 +196,8 @@ class ResearchOrchestrator:
             refined_question=refined_question,
             research_strategy="Debate Mode: 4 AI agents (2 Pro, 2 Con) analyzed the evidence and debated the topic, followed by a Synthesizer AI which created the final response.",
             key_evidence=key_evidence,
-            supporting_arguments=f"### Pro 1 (Direct Impacts)\n{pro1_args}\n\n### Pro 2 (Systemic Impacts)\n{pro2_args}",
-            counterarguments=f"### Con 1 (Direct Risks)\n{con1_args}\n\n### Con 2 (Systemic Risks)\n{con2_args}",
+            supporting_arguments=f"### Pro 1: Direct Impacts\n{pro1_out}\n\n### Pro 2: Systemic Impacts\n{pro2_out}",
+            counterarguments=f"### Con 1: Direct Risks\n{con1_out}\n\n### Con 2: Systemic Risks\n{con2_out}",
             evidence_analysis=dummy_score,
             contradictions="*Not generated in Debate Architecture.*",
             critical_evaluation="*Not generated in Debate Architecture.*",
@@ -192,6 +220,9 @@ class ResearchOrchestrator:
             tasks.append(search_semantic_scholar(refined_question, per_source))
         if "pubmed" in sources:
             tasks.append(search_pubmed(refined_question, per_source))
+        
+        # Always add Google search for "top rated articles" as requested
+        tasks.append(search_google(refined_question, limit=max(3, request.max_papers // 3)))
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
         papers: List[ResearchPaper] = []
@@ -210,7 +241,7 @@ class ResearchOrchestrator:
         return "\n".join(lines)
 
     @staticmethod
-    def _step_event(step: str, status: str, message: str, data: dict = None) -> dict:
+    def _step_event(step: str, status: str, message: str, data: dict = None, provider: str = None) -> dict:
         return {
             "event": "step",
             "data": {
@@ -218,5 +249,6 @@ class ResearchOrchestrator:
                 "status": status,
                 "message": message,
                 "data": data or {},
+                "provider": provider
             },
         }
