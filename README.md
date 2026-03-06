@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ResearchPilot 🔬
 **Agentic AI-Powered Research Intelligence Engine**
 
@@ -120,3 +121,6 @@ ResearchPilot/
         ├── pages/           # HomePage, AnalysisPage
         └── lib/             # API client, TypeScript types
 ```
+=======
+# Quantam-hackers
+>>>>>>> ebb10d521d09f7983d82162121e0bcff22f14e8d
