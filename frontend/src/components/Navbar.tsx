@@ -107,3 +107,6 @@ export default function Navbar() {
         </>
     );
 }
+
+// Support both default and named imports
+export { Navbar };

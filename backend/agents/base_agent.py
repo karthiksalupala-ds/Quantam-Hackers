@@ -15,19 +15,36 @@ class BaseAgent:
         """
         Call the configured LLM provider with automatic fallback.
         Returns a tuple of (response_text, provider_used).
+        Skips providers with no API key to avoid wasting time.
         """
         if settings.is_demo:
             return self._demo_response(user_message), "demo"
 
-        # Define priority order for fallbacks
+        # Build the provider list, skipping providers with no key
         primary = (self.provider or settings.llm_provider).lower()
-        fallbacks = ["groq", "openai", "gemini", "openrouter"]
+        # Gemini is free and fast. Groq is free and fast. OpenRouter is cheap. OpenAI last.
+        all_providers = ["gemini", "groq", "openrouter", "openai"]
         
         # Ensure primary is first, then unique list of others
-        providers_to_try = [primary] + [p for p in fallbacks if p != primary]
+        providers_to_try = [primary] + [p for p in all_providers if p != primary]
+        
+        # Filter out providers with no API key to avoid wasting time
+        available_providers = []
+        for p in providers_to_try:
+            if p == "groq" and settings.groq_api_key:
+                available_providers.append(p)
+            elif p == "openai" and settings.openai_api_key:
+                available_providers.append(p)
+            elif p == "openrouter" and settings.openrouter_api_key:
+                available_providers.append(p)
+            elif p == "gemini" and settings.google_api_key:
+                available_providers.append(p)
+        
+        if not available_providers:
+            raise Exception("No LLM providers configured. Add API keys to .env")
         
         last_error = None
-        for provider in providers_to_try:
+        for provider in available_providers:
             try:
                 if provider == "groq":
                     return await self._call_groq(user_message, max_tokens), "groq"
@@ -56,7 +73,7 @@ class BaseAgent:
         from groq import AsyncGroq
         client = AsyncGroq(api_key=settings.groq_api_key)
         response = await client.chat.completions.create(
-            model=settings.llm_model,
+            model="llama-3.1-8b-instant",  # Much faster than 70b for real-time use
             messages=self._build_messages(user_message),
             temperature=self.temperature,
             max_tokens=max_tokens,
@@ -91,14 +108,14 @@ class BaseAgent:
     async def _call_gemini(self, user_message: str, max_tokens: int) -> str:
         import httpx
         url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash"
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash"
             f":generateContent?key={settings.google_api_key}"
         )
         payload = {
             "contents": [{"parts": [{"text": f"{self.system_prompt}\n\n{user_message}"}]}],
             "generationConfig": {"maxOutputTokens": max_tokens, "temperature": self.temperature},
         }
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:  # 10s timeout instead of 30s
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
         data = resp.json()

@@ -26,7 +26,7 @@ async def search_google(query: str, limit: int = 5) -> List[ResearchPaper]:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()

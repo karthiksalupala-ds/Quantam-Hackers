@@ -2,7 +2,7 @@
 Vector store – stores paper embeddings in Supabase pgvector
 and performs similarity search. Falls back to in-memory search if Supabase is unavailable.
 """
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import numpy as np
 from models import ResearchPaper
 from retrieval.embeddings import generate_embedding
@@ -29,9 +29,10 @@ async def store_papers(papers: List[ResearchPaper]) -> None:
         _in_memory_store.append((paper, emb))
 
 
-async def search_papers(query: str, limit: int = 10) -> List[ResearchPaper]:
+async def search_papers(query: str, limit: int = 10, query_embedding: Optional[List[float]] = None) -> List[ResearchPaper]:
     """Retrieve most relevant papers for a query using cosine similarity."""
-    query_embedding = await generate_embedding(query)
+    if query_embedding is None:
+        query_embedding = await generate_embedding(query)
 
     # Try Supabase first
     results = await database.similarity_search(query_embedding, limit=limit)

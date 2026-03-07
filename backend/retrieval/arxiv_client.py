@@ -19,7 +19,7 @@ async def search_arxiv(query: str, max_results: int = 5) -> List[ResearchPaper]:
         "sortOrder": "descending",
     }
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=7.0) as client:
             response = await client.get(ARXIV_BASE, params=params)
             response.raise_for_status()
 

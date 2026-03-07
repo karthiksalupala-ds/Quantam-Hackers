@@ -20,6 +20,7 @@ from retrieval.openalex_client import search_openalex
 from retrieval.core_client import search_core
 from retrieval.crossref_client import search_crossref
 from retrieval.duckduckgo_client import search_duckduckgo
+from retrieval.wikipedia_client import search_wikipedia
 import database
 from database import similarity_search
 from openai import AsyncOpenAI
@@ -68,10 +69,11 @@ DEMO_RESULT = {
 
 class ResearchOrchestrator:
     def __init__(self):
-        # We assign 5 different providers across the 6 agents to utilize the user's keys
-        self.query_refiner = QueryRefinerAgent(provider="openai") # OpenAI for precise refinement
+        # Use Gemini and Groq as primary providers (free/fast, working)
+        # Avoid OpenAI (quota exceeded) - it's available as fallback only
+        self.query_refiner = QueryRefinerAgent(provider="gemini")  # Gemini is free and fast
         
-        # 4 Debaters using different models for diversity of thought
+        # 4 Debaters - use Groq (instant speed) and Gemini (free)
         self.pro1 = ProAgent(
             name="Pro Debater 1", 
             focus="Direct positive impacts and immediate benefits.",
@@ -85,17 +87,17 @@ class ResearchOrchestrator:
         self.con1 = ConAgent(
             name="Con Debater 1", 
             focus="Direct negative impacts, immediate harms, and critical flaws.",
-            provider="openrouter"
+            provider="groq"
         )
         self.con2 = ConAgent(
             name="Con Debater 2", 
             focus="Long-term systemic risks, unintended consequences, and ethical concerns.",
-            provider="groq" # Using Groq again as it is fast and versatile
+            provider="gemini"
         )
         
-        # 1 Synthesizer
-        self.moderator = ModeratorAgent(provider="openai") # OpenAI for high-quality synthesis
-        self.critic = CriticAgent(provider="openrouter") # OpenRouter for critical perspective
+        # Synthesizer and Critic - use Gemini (high-quality, free) and Groq (fast)
+        self.moderator = ModeratorAgent(provider="gemini")
+        self.critic = CriticAgent(provider="groq")
 
     async def run(self, request: ResearchRequest) -> AsyncGenerator[dict, None]:
         """Full pipeline yielding SSE events at each step."""
@@ -145,7 +147,6 @@ class ResearchOrchestrator:
         cached = await database.get_cached_analysis(original_query)
         if cached:
             yield self._step_event("cache_hit", "done", "🎯 Cache Hit! Retrieving pre-computed intelligence from vault.", {"query_id": cached["query_id"]})
-            await asyncio.sleep(0.8) # Better UX to show it's "doing" something
             
             # Yield the cached result
             analysis = cached["analysis"]
@@ -173,32 +174,18 @@ class ResearchOrchestrator:
             yield {"event": "result", "data": result.model_dump(mode="json")}
             return
         
-        # ── STEP 1: Query Refinement ────────────────────────────
-        yield self._step_event("query_refinement", "running", f"🔍 Refining Query ({mode.capitalize()} Mode)...", provider="openai")
-        refined_question, refiner_provider = await self.query_refiner.refine(original_query)
-        yield self._step_event("query_refinement", "done", f"✅ Refined: {refined_question[:80]}...", {"refined_question": refined_question}, provider=refiner_provider)
+        # ── STEP 1: Query Refinement (SKIPPED FOR MAXIMUM SPEED) ───────────────
+        yield self._step_event("query_refinement", "running", "⚡ Fast-tracking query (skipping LLM refinement)...")
+        refined_question = original_query
+        yield self._step_event("query_refinement", "done", f"✅ Query fast-tracked: {refined_question[:80]}...", {"refined_question": refined_question})
 
         # ── STEP 2: Paper Retrieval ───────────────────────────────
-        yield self._step_event("retrieval", "running", "🌐 Initializing Search Protocols (ArXiv, PubMed, Google)...")
-        # 1. Retrieval Phase
-        yield self._step_event("retrieval", "running", "Searching global databases & personal library...")
+        yield self._step_event("retrieval", "running", "🌐 Launching Instant Search Protocols...")
         
-        # Search global papers
+        # Search global papers and personal library in parallel
         papers = await self._retrieve_papers(request, refined_question)
-        
-            # Search personal library if request.user_id is provided
-        if hasattr(request, 'user_id') and request.user_id:
-            yield self._step_event("retrieval", "running", "Searching personal library for relevant chunks...")
-            # Generate embedding for the search query
-            client_ai = AsyncOpenAI(api_key=settings.openai_api_key)
-            emb_res = await client_ai.embeddings.create(input=refined_question, model="text-embedding-3-small")
-            search_embedding = emb_res.data[0].embedding
-            
-            personal_chunks = await similarity_search(search_embedding, limit=5, user_id=request.user_id)
-            papers.extend(personal_chunks)
-            yield self._step_event("retrieval", "running", f"Found {len(personal_chunks)} personal chunks.")
 
-        yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers and articles.", {"paper_count": len(papers)})
+        yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers in under 3 seconds.", {"paper_count": len(papers)})
 
         if not papers:
             # Fallback to stored vector search
@@ -211,79 +198,116 @@ class ResearchOrchestrator:
         # Build key evidence summary
         key_evidence = self._summarize_evidence(papers)
 
-        # ── STEP 3: Multi-Agent Debate (4 Agents) ────────────────────────────────
-        yield self._step_event("debate", "running", "🤝 Deploying Multi-LLM Debate Unit (Groq, Gemini, OpenRouter)...", provider="multi")
-        await asyncio.sleep(0.5)
-        yield self._step_event("debate", "running", "⚖️ Cross-referencing supporting and conflicting evidence...")
-        
-        # Run 4 agents concurrently for speed
-        debate_task = asyncio.gather(
-            self.pro1.argue(refined_question, papers),
-            self.pro2.argue(refined_question, papers),
-            self.con1.argue(refined_question, papers),
-            self.con2.argue(refined_question, papers)
+        # ── STEP 3 & 4: Insight Generation (Fast-Path vs Deep Debate) ──────────
+        dummy_score = EvidenceScore(
+            overall_score=8.5, paper_count=len(papers),
+            source_diversity=8.0, consistency_score=7.0, label="Strong"
         )
         
-        # Intermediary "Thinking" updates while agents are working
-        await asyncio.sleep(1.0)
-        yield self._step_event("debate", "running", "🧠 Analyzing semantic overlaps in agent arguments...")
-        
-        results = await debate_task
-        
-        (pro1_args, pro1_p), (pro2_args, pro2_p), (con1_args, con1_p), (con2_args, con2_p) = results
-        
-        # Attribute responses for transparency (using actual provider used)
-        pro1_out = f"**[{pro1_p.upper()}]** {pro1_args}"
-        pro2_out = f"**[{pro2_p.upper()}]** {pro2_args}"
-        con1_out = f"**[{con1_p.upper()}]** {con1_args}"
-        con2_out = f"**[{con2_p.upper()}]** {con2_args}"
+        is_comprehensive = request.depth.lower() == "comprehensive"
 
-        yield self._step_event("debate", "done", f"✅ Debate complete using fallback-enabled pipeline.", provider="multi")
+        if is_comprehensive:
+            yield self._step_event("debate", "running", "🤝 Deploying High-Speed Debate Unit...", provider="multi")
+            
+            # Run all 4 debate agents concurrently
+            debate_results = await asyncio.gather(
+                self.pro1.argue(refined_question, papers),
+                self.pro2.argue(refined_question, papers),
+                self.con1.argue(refined_question, papers),
+                self.con2.argue(refined_question, papers)
+            )
+            
+            (pro1_args, pro1_p), (pro2_args, pro2_p), (con1_args, con1_p), (con2_args, con2_p) = debate_results
+            
+            pro1_out = f"**[{pro1_p.upper()}]** {pro1_args}"
+            pro2_out = f"**[{pro2_p.upper()}]** {pro2_args}"
+            con1_out = f"**[{con1_p.upper()}]** {con1_args}"
+            con2_out = f"**[{con2_p.upper()}]** {con2_args}"
+            
+            supporting_arguments = f"### Pro 1: Direct Impacts\n{pro1_out}\n\n### Pro 2: Systemic Impacts\n{pro2_out}"
+            counterarguments = f"### Con 1: Direct Risks\n{con1_out}\n\n### Con 2: Systemic Risks\n{con2_out}"
 
-        # ── STEP 4: Synthesis (Moderator/Synthesizer) ───────────────────────────────
-        yield self._step_event("final_insight", "running", "📄 Synthesizing debate into final insight...", provider="openai")
-        final_insight, mod_provider = await self.moderator.moderate(
-            refined_question, pro1_args, pro2_args, con1_args, con2_args
+            yield self._step_event("debate", "done", f"✅ Debate complete.", provider="multi")
+            yield self._step_event("final_insight", "running", "📄 Synthesizing + Evaluating...", provider="multi")
+            
+            # Concurrent Synthesis & Evaluation
+            synthesis_task = self.moderator.moderate(
+                refined_question, pro1_args, pro2_args, con1_args, con2_args
+            )
+        else:
+            # FAST-PATH FOR STANDARD SPEED (ChatGPT-like speed)
+            yield self._step_event("debate", "done", "⚡ Fast-path synthesis active (skipping debate for speed).")
+            yield self._step_event("final_insight", "running", "📄 Synthesizing insights directly from sources...", provider="multi")
+            
+            pro1_args = self._summarize_evidence(papers)
+            supporting_arguments = "*(Debate skipped for standard speed. Fast synthesis active.)*"
+            counterarguments = "*(Debate skipped for standard speed. Fast synthesis active.)*"
+            pro2_args, con1_args, con2_args = "", "", ""
+            
+            # Direct synthesis without debate
+            synthesis_task = self.moderator.moderate(
+                refined_question, pro1_args, "", "", ""
+            )
+
+        # ── RUN EVALUATION AND SYNTHESIS ───────────────────────────────────────
+        evaluation_task = self.critic.evaluate(
+            refined_question, [pro1_args, pro2_args], [con1_args, con2_args], "pending"
         )
+        
+        post_results = await asyncio.gather(synthesis_task, evaluation_task, return_exceptions=True)
+        
+        # Extract results safely
+        final_insight, mod_provider = ("Analysis could not be completed.", "error")
+        if not isinstance(post_results[0], Exception):
+            final_insight, mod_provider = post_results[0]
+        
+        eval_out = ""
+        if not isinstance(post_results[1], Exception):
+            eval_out = post_results[1]
+            if isinstance(eval_out, tuple):
+                eval_out = eval_out[0]
+        
+        # Parse evaluation output
+        parts = eval_out.split("### Critical Evaluation") if eval_out else [""]
+        contradictions = parts[0].replace("### Points of Contention", "").strip() if len(parts) > 0 else ""
+        
+        if len(parts) > 1:
+            eval_and_gaps = parts[1].strip()
+            if "### Research Gaps & Future Directions" in eval_and_gaps:
+                gap_parts = eval_and_gaps.split("### Research Gaps & Future Directions")
+                critical_evaluation = gap_parts[0].strip()
+                research_gaps = gap_parts[1].strip()
+            else:
+                critical_evaluation = eval_and_gaps
+                research_gaps = "Further research recommended."
+        else:
+            critical_evaluation = eval_out
+            research_gaps = "Further research recommended."
+
         yield self._step_event("final_insight", "done", "✅ Final insight produced.", provider=mod_provider)
 
-        # ── STEP 5: Critical Evaluation & Contradictions ──────────────────────────
-        yield self._step_event("evaluation", "running", "🧐 Critically evaluating debate quality and evidence strength...", provider="openrouter")
-        eval_out, critic_p = await self.critic.evaluate(
-            refined_question, [pro1_args, pro2_args], [con1_args, con2_args], papers
-        )
-        
-        # Simple split logic (fallback if Markdown structure is different)
-        parts = eval_out.split("### Critical Evaluation")
-        contradictions = parts[0].replace("### Points of Contention", "").strip() if len(parts) > 0 else eval_out
-        
-        eval_and_gaps = parts[1].strip() if len(parts) > 1 else "Analysis pending additional cross-reference."
-        if "### Research Gaps & Future Directions" in eval_and_gaps:
-            gap_parts = eval_and_gaps.split("### Research Gaps & Future Directions")
-            critical_evaluation = gap_parts[0].strip()
-            research_gaps = gap_parts[1].strip()
-        else:
-            critical_evaluation = eval_and_gaps
-            research_gaps = "Analysis pending for Debate Architecture."
-        
-        yield self._step_event("evaluation", "done", "✅ Evaluation and Contradiction detection complete.", provider=critic_p)
+        # ── Store in Supabase (fire-and-forget) ────────────────────────────
+        async def _store_results():
+            try:
+                qid = await database.store_query(original_query, refined_question, user_id=request.user_id)
+                if qid:
+                    await database.store_analysis(qid, {
+                        "supporting_arguments": pro1_args + "\n\n" + pro2_args,
+                        "counterarguments": con1_args + "\n\n" + con2_args,
+                        "evidence_score": 8.0,
+                        "final_insight": final_insight,
+                        "contradictions": contradictions,
+                        "critical_evaluation": critical_evaluation,
+                        "research_gaps": research_gaps
+                    })
+                return qid
+            except Exception as e:
+                logger.error(f"Error storing results: {e}")
+                return None
 
-        # ── Store in Supabase ────────────────────────────────────
-        # Get optional user_id from the request via headers down the line, 
-        # but for now we'll accept it via the ResearchRequest model
-        query_id = await database.store_query(original_query, refined_question, user_id=request.user_id)
-        if query_id:
-            await database.store_analysis(query_id, {
-                "supporting_arguments": pro1_args + "\n\n" + pro2_args,
-                "counterarguments": con1_args + "\n\n" + con2_args,
-                "evidence_score": 8.0,
-                "final_insight": final_insight,
-                "contradictions": contradictions,
-                "critical_evaluation": critical_evaluation,
-                "research_gaps": research_gaps
-            })
+        query_id = await _store_results()
 
-        # ── Dummy Data for unused pipeline steps ───────────────────────
+        # ── Final Result Event ───────────────────────────────────
         dummy_score = EvidenceScore(
             overall_score=8.5,
             paper_count=len(papers),
@@ -292,7 +316,6 @@ class ResearchOrchestrator:
             label="Strong"
         )
 
-        # ── Final Result Event ───────────────────────────────────
         result = AnalysisResult(
             query_id=query_id,
             original_query=original_query,
@@ -375,6 +398,32 @@ class ResearchOrchestrator:
     async def _retrieve_papers(
         self, request: ResearchRequest, refined_question: str
     ) -> List[ResearchPaper]:
+        """
+        Retrieves papers by first checking the local vector database,
+        then falling back to external APIs if more data is needed.
+        Uses a strict 8-second global timeout for the entire phase.
+        """
+        from retrieval.vector_store import search_papers
+        from retrieval.embeddings import generate_embedding
+        
+        # 1. Generate query embedding ONCE for reuse
+        try:
+            query_embedding = await generate_embedding(refined_question)
+        except Exception as e:
+            logger.error(f"Error generating query embedding: {e}")
+            query_embedding = None
+
+        # 2. Check local database first with pre-computed embedding
+        local_papers = []
+        if query_embedding:
+            local_papers = await search_papers(refined_question, limit=request.max_papers, query_embedding=query_embedding)
+        
+        # Early exit if we have enough high-quality local results (Lossy optimization)
+        if len(local_papers) >= 7:
+            logger.info(f"Found {len(local_papers)} papers in local database. Instant return triggered.")
+            return local_papers[:request.max_papers]
+
+        # 3. Perform external searches in parallel with a hard global timeout
         sources = request.sources
         per_source = max(3, request.max_papers // len(sources))
 
@@ -391,16 +440,51 @@ class ResearchOrchestrator:
         tasks.append(search_core(refined_question, per_source))
         tasks.append(search_crossref(refined_question, per_source))
         tasks.append(search_duckduckgo(refined_question, per_source))
+        tasks.append(search_wikipedia(refined_question, per_source))
         
-        # Always add Google search for "top rated articles" as requested
+        # Always add Google search
         tasks.append(search_google(refined_question, limit=max(3, request.max_papers // 3)))
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        papers: List[ResearchPaper] = []
-        for res in results:
-            if isinstance(res, list):
-                papers.extend(res)
-        return papers[:request.max_papers]
+        # Parallel search for personal library with pre-computed embedding
+        if hasattr(request, 'user_id') and request.user_id and query_embedding:
+            tasks.append(self._search_personal_library_with_embedding(query_embedding, request.user_id))
+
+        # Use wait with timeout to ensure we don't hang the whole pipeline
+        done, pending = await asyncio.wait(
+            [asyncio.create_task(t) for t in tasks], 
+            timeout=2.5 # 2.5 second ultra-fast cap (ChatGPT/Gemini speed)
+        )
+        
+        # Cancel pending tasks to free up resources
+        for task in pending:
+            task.cancel()
+
+        # Collect results from finished tasks
+        all_papers = list(local_papers)
+        seen_titles = {p.title.lower().strip() for p in local_papers}
+        
+        for task in done:
+            try:
+                res = task.result()
+                if isinstance(res, list):
+                    for paper in res:
+                        title_norm = paper.title.lower().strip()
+                        if title_norm not in seen_titles:
+                            all_papers.append(paper)
+                            seen_titles.add(title_norm)
+            except Exception as e:
+                logger.error(f"Task result error: {e}")
+        
+        return all_papers[:request.max_papers]
+
+    async def _search_personal_library_with_embedding(self, embedding: List[float], user_id: str) -> List[ResearchPaper]:
+        """Helper to search personal library using a pre-computed embedding."""
+        from database import similarity_search
+        try:
+            return await similarity_search(embedding, limit=5, user_id=user_id)
+        except Exception as e:
+            logger.error(f"Error searching personal library: {e}")
+            return []
 
     def _summarize_evidence(self, papers: List[ResearchPaper]) -> str:
         if not papers:

@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     serper_api_key: str = Field(default="")
     huggingface_api_token: str = Field(default="")
 
-    llm_provider: str = "groq"
-    llm_model: str = "llama-3.3-70b-versatile"
+    llm_provider: str = "gemini"  # Gemini is free and fast
+    llm_model: str = "llama-3.1-8b-instant"  # Fast Groq model for when Groq is used
     embedding_provider: str = "huggingface"
 
     # Supabase

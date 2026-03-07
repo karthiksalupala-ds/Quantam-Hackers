@@ -39,4 +39,4 @@ class ModeratorAgent(BaseAgent):
             f"--- Con Argument 2 (Focus: Systemic/Long-term Risks) ---\n{con2_args[:1000]}\n\n"
             f"Synthesize the debate into a comprehensive, Perplexity-style final response:"
         )
-        return await self._call_llm(prompt, max_tokens=1500)
+        return await self._call_llm(prompt, max_tokens=800)

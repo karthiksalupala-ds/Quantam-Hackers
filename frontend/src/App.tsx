@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
-import AnalysisPage from './pages/AnalysisPage';
+import { AnalysisPage } from './pages/AnalysisPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AuthProvider } from './contexts/AuthContext';
 import { SettingsProvider } from './contexts/SettingsContext';
@@ -15,7 +15,7 @@ export default function App() {
                         <Navbar />
                         <Routes>
                             <Route path="/" element={<HomePage />} />
-                            <Route path="/analysis" element={<AnalysisPage />} />
+                            <Route path="/analysis/:queryId" element={<AnalysisPage />} />
                             <Route path="/profile" element={<ProfilePage />} />
                         </Routes>
                     </div>

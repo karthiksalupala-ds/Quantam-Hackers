@@ -31,7 +31,7 @@ async def search_pubmed(query: str, max_results: int = 5) -> List[ResearchPaper]
             "retmax": max_results,
             "sort": "relevance",
         }
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             search_resp = await client.get(ESEARCH_URL, params=search_params)
             search_resp.raise_for_status()
             search_data = search_resp.json()
@@ -48,7 +48,7 @@ async def search_pubmed(query: str, max_results: int = 5) -> List[ResearchPaper]
             "rettype": "abstract",
             "retmode": "xml",
         }
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=7.0) as client:
             fetch_resp = await client.get(EFETCH_URL, params=fetch_params)
             fetch_resp.raise_for_status()
 

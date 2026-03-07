@@ -109,3 +109,11 @@ export async function sendChatMessage(request: { query: string; context: string;
     if (!res.ok) throw new Error('Chat failed');
     return res.json();
 }
+
+/** Fetch analysis for a specific query */
+export async function fetchAnalysis(queryId: string): Promise<AnalysisResult | null> {
+    const url = `${API_BASE}/queries/${queryId}/analysis`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return res.json();
+}

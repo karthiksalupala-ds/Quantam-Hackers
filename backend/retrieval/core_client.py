@@ -21,7 +21,7 @@ async def search_core(query: str, max_results: int = 5) -> List[ResearchPaper]:
     }
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.post(
                 f"{CORE_BASE}/search/works",
                 headers=headers,

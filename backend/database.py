@@ -194,3 +194,21 @@ async def get_cached_analysis(user_query: str) -> Optional[dict]:
     except Exception as e:
         print(f"[DB] Cache lookup error: {e}")
     return None
+
+async def get_analysis_by_query_id(query_id: str) -> Optional[dict]:
+    """Gets an analysis by its query ID."""
+    client = get_supabase()
+    if not client:
+        return None
+    try:
+        analysis_res = client.table("research_analysis")\
+            .select("*")\
+            .eq("query_id", query_id)\
+            .limit(1)\
+            .execute()
+        if not analysis_res.data:
+            return None
+        return analysis_res.data[0]
+    except Exception as e:
+        print(f"[DB] Error fetching analysis by query ID: {e}")
+        return None

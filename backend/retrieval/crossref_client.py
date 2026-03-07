@@ -23,7 +23,7 @@ async def search_crossref(query: str, max_results: int = 5) -> List[ResearchPape
     }
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{CROSSREF_BASE}/works",
                 params=params,

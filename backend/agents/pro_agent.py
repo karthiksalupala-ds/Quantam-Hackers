@@ -28,14 +28,14 @@ Write 3-5 well-structured supporting arguments. Format as numbered points."""
             f"Available Research Evidence:\n{context}\n\n"
             f"Generate supporting arguments:"
         )
-        return await self._call_llm(prompt, max_tokens=1500)
+        return await self._call_llm(prompt, max_tokens=800)
 
     def _build_context(self, papers: List[ResearchPaper]) -> str:
         snippets = []
-        for i, p in enumerate(papers[:8], 1):
+        for i, p in enumerate(papers[:5], 1):
             authors = ", ".join(p.authors[:2]) if p.authors else "Unknown"
             year = f"({p.year})" if p.year else ""
             snippets.append(
-                f"[{i}] {p.title} — {authors} {year} [{p.source}]\n{p.abstract[:400]}"
+                f"[{i}] {p.title} — {authors} {year} [{p.source}]\n{p.abstract[:250]}"
             )
         return "\n\n".join(snippets)

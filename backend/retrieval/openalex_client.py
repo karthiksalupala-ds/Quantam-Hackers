@@ -16,7 +16,7 @@ async def search_openalex(query: str, max_results: int = 5) -> List[ResearchPape
     }
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{OPENALEX_BASE}/works",
                 params=params

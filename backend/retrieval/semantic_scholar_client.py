@@ -25,7 +25,7 @@ async def search_semantic_scholar(query: str, max_results: int = 5) -> List[Rese
         "fields": "title,abstract,year,authors,citationCount,externalIds,url",
     }
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(
                 f"{SS_BASE}/paper/search",
                 params=params,
