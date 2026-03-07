@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSettings } from '../contexts/SettingsContext';
 import type { AnalysisResult, PipelineStep } from '../lib/types';
 import { analyzeResearch } from '../lib/api';
 import SearchBar from '../components/SearchBar';
@@ -12,6 +13,7 @@ export default function AnalysisPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { researchMode } = useSettings();
     const initialQuery = (location.state as { query?: string })?.query ?? '';
 
     const [query, setQuery] = useState(initialQuery);
@@ -33,6 +35,7 @@ export default function AnalysisPage() {
 
         const requestPayload = {
             query: q,
+            research_mode: researchMode,
             max_papers: 12,
             ...(user?.id ? { user_id: user.id } : {})
         };
@@ -99,46 +102,45 @@ export default function AnalysisPage() {
                 )}
 
                 {/* Main layout */}
-                <div className="grid lg:grid-cols-[340px_1fr] gap-6">
-                    {/* Left: Pipeline */}
-                    <div className="space-y-4">
-                        {(isLoading || Object.keys(steps).length > 0) && (
-                            <ReasoningPipeline steps={steps} isActive={isLoading} />
-                        )}
+                <div className="space-y-8">
+                    {/* Top: Full-width Pipeline */}
+                    {(isLoading || Object.keys(steps).length > 0) && (
+                        <ReasoningPipeline steps={steps} isActive={isLoading} />
+                    )}
 
-                        {/* Query info */}
-                        {query && !isLoading && result && (
-                            <div className="glass rounded-xl p-4 text-xs text-slate-500">
-                                <p className="font-medium text-slate-400 mb-1">Query</p>
-                                <p className="italic">"{query}"</p>
-                                <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-                                    <span className="text-emerald-400">✓</span>
-                                    <span>Analysis complete</span>
+                    <div className="grid lg:grid-cols-[340px_1fr] gap-8">
+                        {/* Left: Metadata/Status */}
+                        <div className="space-y-4">
+                            {query && !isLoading && result && (
+                                <div className="glass rounded-2xl p-6 text-xs text-slate-500 border border-white/5 animate-fade-in shadow-lg">
+                                    <p className="font-black text-slate-400 mb-2 uppercase tracking-widest text-[10px]">Research Query</p>
+                                    <p className="italic leading-relaxed">"{query}"</p>
+                                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                        <span className="font-bold text-emerald-400 uppercase tracking-tighter">Analysis complete</span>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Empty loading state */}
-                        {!query && !isLoading && !result && (
-                            <div className="glass rounded-xl p-6 text-center text-slate-600">
-                                <p className="text-sm">Enter a research question above to begin.</p>
-                            </div>
-                        )}
-                    </div>
+                            {!query && !isLoading && !result && (
+                                <div className="glass rounded-2xl p-8 text-center text-slate-500 border border-white/5 animate-fade-in">
+                                    <p className="text-sm font-medium">Enter a research question above to begin your deep analysis.</p>
+                                </div>
+                            )}
+                        </div>
 
-                    {/* Right: Results */}
-                    <div>
-                        {/* Loading skeleton */}
-                        {isLoading && !result && (
-                            <div className="space-y-3">
-                                {[1, 2, 3].map(i => (
-                                    <div key={i} className="glass rounded-xl h-24 shimmer" />
-                                ))}
-                            </div>
-                        )}
+                        {/* Right: Results */}
+                        <div>
+                            {isLoading && !result && (
+                                <div className="space-y-4">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="glass rounded-2xl h-32 shimmer border border-white/5" />
+                                    ))}
+                                </div>
+                            )}
 
-                        {/* Results */}
-                        {result && <ResultsPanel result={result} />}
+                            {result && <ResultsPanel result={result} />}
+                        </div>
                     </div>
                 </div>
             </div>

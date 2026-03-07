@@ -9,7 +9,14 @@ class ResearchRequest(BaseModel):
     query: str = Field(..., min_length=5, max_length=1000, description="User research query")
     max_papers: int = Field(default=10, ge=3, le=30)
     sources: List[str] = Field(default=["arxiv", "semantic_scholar", "pubmed"])
+    research_mode: str = Field(default="academic", description="academic | journalistic | skeptic")
     user_id: Optional[str] = Field(default=None, description="Optional Supabase user ID")
+
+class ChatRequest(BaseModel):
+    query: str
+    context: str # The final research insight + paper snippets
+    message: str
+    history: Optional[List[dict]] = []
 
 
 # ── Paper Models ───────────────────────────────────────────────

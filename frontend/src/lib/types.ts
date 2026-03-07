@@ -64,4 +64,5 @@ export const PIPELINE_STEPS: Array<{ id: string; icon: string; label: string }> 
     { id: 'retrieval', icon: '📚', label: 'Retrieving Research Papers' },
     { id: 'debate', icon: '⚖️', label: 'Conducting AI Debate (Pro vs Con)' },
     { id: 'final_insight', icon: '📄', label: 'Synthesizing Argument into Insight' },
+    { id: 'evaluation', icon: '🧐', label: 'Critically Evaluating Debate Quality' },
 ];

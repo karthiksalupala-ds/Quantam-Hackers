@@ -1,4 +1,6 @@
-import { X, Settings, Database, Cpu, Globe, Layout, ShieldCheck } from 'lucide-react';
+import { X, Settings, Database, Cpu, Globe, Layout, ShieldCheck, Zap, BookOpen, Search, Library } from 'lucide-react';
+import { useSettings } from '../contexts/SettingsContext';
+import FileUpload from './FileUpload';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -6,6 +8,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+    const { researchMode, setResearchMode, compactView, setCompactView } = useSettings();
     if (!isOpen) return null;
 
     return (
@@ -36,9 +39,37 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 {/* Content */}
                 <div className="p-6 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
 
-                    {/* Intelligence Section */}
+                    {/* Research Mode Section */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-brand-400">
+                            <Zap className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-widest">Research Intensity</h3>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { id: 'academic', label: 'Academic', icon: BookOpen, desc: 'Precise' },
+                                { id: 'journalistic', label: 'Journalistic', icon: Globe, desc: 'Engaging' },
+                                { id: 'skeptic', label: 'Skeptic', icon: ShieldCheck, desc: 'Critical' }
+                            ].map(mode => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => setResearchMode(mode.id as any)}
+                                    className={`p-3 rounded-2xl border transition-all text-left ${researchMode === mode.id
+                                        ? 'bg-brand-500/10 border-brand-500/40 text-brand-300'
+                                        : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/10'
+                                        }`}
+                                >
+                                    <mode.icon className="w-4 h-4 mb-2" />
+                                    <p className="text-[11px] font-bold uppercase tracking-widest leading-none mb-1">{mode.label}</p>
+                                    <p className="text-[9px] opacity-60 font-medium">{mode.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Intelligence Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-purple-400">
                             <Cpu className="w-4 h-4" />
                             <h3 className="text-xs font-bold uppercase tracking-widest">Intelligence Engine</h3>
                         </div>
@@ -80,6 +111,20 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         </div>
                     </div>
 
+                    {/* Personal Library Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-indigo-400">
+                            <Library className="w-4 h-4" />
+                            <h3 className="text-xs font-bold uppercase tracking-widest">Personal Research Library</h3>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+                            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                                Upload your own PDF documents. We'll automatically index and chunk them so the AI can use them as primary sources in your research.
+                            </p>
+                            <FileUpload userId="demo-user" />
+                        </div>
+                    </div>
+
                     {/* Preferences Section */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 text-amber-400">
@@ -89,11 +134,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-300">Compact Results View</span>
-                                <input type="checkbox" className="accent-brand-500" />
+                                <input
+                                    type="checkbox"
+                                    checked={compactView}
+                                    onChange={(e) => setCompactView(e.target.checked)}
+                                    className="accent-brand-500"
+                                />
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-slate-300">Show Internal Reasoning</span>
-                                <input type="checkbox" checked={false} className="accent-brand-500" readOnly />
+                                <input type="checkbox" checked={true} className="accent-brand-500" readOnly />
                             </div>
                         </div>
                     </div>

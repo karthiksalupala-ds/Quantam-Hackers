@@ -10,12 +10,19 @@ from agents.query_refiner import QueryRefinerAgent
 from agents.pro_agent import ProAgent
 from agents.con_agent import ConAgent
 from agents.moderator import ModeratorAgent
+from agents.critic import CriticAgent
 from retrieval.arxiv_client import search_arxiv
 from retrieval.semantic_scholar_client import search_semantic_scholar
 from retrieval.pubmed_client import search_pubmed
 from retrieval.google_search_client import search_google
 from retrieval.vector_store import store_papers, search_papers
 import database
+from database import similarity_search
+from openai import AsyncOpenAI
+import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 DEMO_PAPERS = [
     {
@@ -84,6 +91,7 @@ class ResearchOrchestrator:
         
         # 1 Synthesizer
         self.moderator = ModeratorAgent(provider="openai") # OpenAI for high-quality synthesis
+        self.critic = CriticAgent(provider="openrouter") # OpenRouter for critical perspective
 
     async def run(self, request: ResearchRequest) -> AsyncGenerator[dict, None]:
         """Full pipeline yielding SSE events at each step."""
@@ -119,14 +127,40 @@ class ResearchOrchestrator:
 
         original_query = request.query
 
+        # ── RESEARCH MODE ADJUSTMENT ──────────────────────────
+        mode = request.research_mode.lower()
+        if mode == "journalistic":
+            self.moderator.temperature = 0.7
+            self.moderator.system_prompt += "\nFocus on narrative flow, readability, and real-world implications. Use engaging analogies."
+        elif mode == "skeptic":
+            self.critic.temperature = 0.5
+            self.critic.system_prompt += "\nBe extremely critical of the evidence quality. Identify potential biases and industry funding in paper sources."
+        
         # ── STEP 1: Query Refinement ────────────────────────────
-        yield self._step_event("query_refinement", "running", "🔍 Refining Research Query...", provider="openai")
+        yield self._step_event("query_refinement", "running", f"🔍 Refining Query ({mode.capitalize()} Mode)...", provider="openai")
         refined_question, refiner_provider = await self.query_refiner.refine(original_query)
         yield self._step_event("query_refinement", "done", f"✅ Refined: {refined_question[:80]}...", {"refined_question": refined_question}, provider=refiner_provider)
 
         # ── STEP 2: Paper Retrieval ───────────────────────────────
-        yield self._step_event("retrieval", "running", "📚 Retrieving Research Papers from arXiv, Semantic Scholar, PubMed & Web Articles...")
+        yield self._step_event("retrieval", "running", "🌐 Initializing Search Protocols (ArXiv, PubMed, Google)...")
+        # 1. Retrieval Phase
+        yield self._step_event("retrieval", "running", "Searching global databases & personal library...")
+        
+        # Search global papers
         papers = await self._retrieve_papers(request, refined_question)
+        
+            # Search personal library if request.user_id is provided
+        if hasattr(request, 'user_id') and request.user_id:
+            yield self._step_event("retrieval", "running", "Searching personal library for relevant chunks...")
+            # Generate embedding for the search query
+            client_ai = AsyncOpenAI(api_key=settings.openai_api_key)
+            emb_res = await client_ai.embeddings.create(input=refined_question, model="text-embedding-3-small")
+            search_embedding = emb_res.data[0].embedding
+            
+            personal_chunks = await similarity_search(search_embedding, limit=5, user_id=request.user_id)
+            papers.extend(personal_chunks)
+            yield self._step_event("retrieval", "running", f"Found {len(personal_chunks)} personal chunks.")
+
         yield self._step_event("retrieval", "done", f"✅ Retrieved {len(papers)} papers and articles.", {"paper_count": len(papers)})
 
         if not papers:
@@ -141,15 +175,23 @@ class ResearchOrchestrator:
         key_evidence = self._summarize_evidence(papers)
 
         # ── STEP 3: Multi-Agent Debate (4 Agents) ────────────────────────────────
-        yield self._step_event("debate", "running", "⚖️ Conducting Multi-Agent Debate (Mixed Models)...", provider="multi")
+        yield self._step_event("debate", "running", "🤝 Deploying Multi-LLM Debate Unit (Groq, Gemini, OpenRouter)...", provider="multi")
+        await asyncio.sleep(0.5)
+        yield self._step_event("debate", "running", "⚖️ Cross-referencing supporting and conflicting evidence...")
         
         # Run 4 agents concurrently for speed
-        results = await asyncio.gather(
+        debate_task = asyncio.gather(
             self.pro1.argue(refined_question, papers),
             self.pro2.argue(refined_question, papers),
             self.con1.argue(refined_question, papers),
             self.con2.argue(refined_question, papers)
         )
+        
+        # Intermediary "Thinking" updates while agents are working
+        await asyncio.sleep(1.0)
+        yield self._step_event("debate", "running", "🧠 Analyzing semantic overlaps in agent arguments...")
+        
+        results = await debate_task
         
         (pro1_args, pro1_p), (pro2_args, pro2_p), (con1_args, con1_p), (con2_args, con2_p) = results
         
@@ -168,6 +210,27 @@ class ResearchOrchestrator:
         )
         yield self._step_event("final_insight", "done", "✅ Final insight produced.", provider=mod_provider)
 
+        # ── STEP 5: Critical Evaluation & Contradictions ──────────────────────────
+        yield self._step_event("evaluation", "running", "🧐 Critically evaluating debate quality and evidence strength...", provider="openrouter")
+        eval_out, critic_p = await self.critic.evaluate(
+            refined_question, [pro1_args, pro2_args], [con1_args, con2_args], papers
+        )
+        
+        # Simple split logic (fallback if Markdown structure is different)
+        parts = eval_out.split("### Critical Evaluation")
+        contradictions = parts[0].replace("### Points of Contention", "").strip() if len(parts) > 0 else eval_out
+        
+        eval_and_gaps = parts[1].strip() if len(parts) > 1 else "Analysis pending additional cross-reference."
+        if "### Research Gaps & Future Directions" in eval_and_gaps:
+            gap_parts = eval_and_gaps.split("### Research Gaps & Future Directions")
+            critical_evaluation = gap_parts[0].strip()
+            research_gaps = gap_parts[1].strip()
+        else:
+            critical_evaluation = eval_and_gaps
+            research_gaps = "Analysis pending for Debate Architecture."
+        
+        yield self._step_event("evaluation", "done", "✅ Evaluation and Contradiction detection complete.", provider=critic_p)
+
         # ── Store in Supabase ────────────────────────────────────
         # Get optional user_id from the request via headers down the line, 
         # but for now we'll accept it via the ResearchRequest model
@@ -178,6 +241,9 @@ class ResearchOrchestrator:
                 "counterarguments": con1_args + "\n\n" + con2_args,
                 "evidence_score": 8.0,
                 "final_insight": final_insight,
+                "contradictions": contradictions,
+                "critical_evaluation": critical_evaluation,
+                "research_gaps": research_gaps
             })
 
         # ── Dummy Data for unused pipeline steps ───────────────────────
@@ -199,13 +265,75 @@ class ResearchOrchestrator:
             supporting_arguments=f"### Pro 1: Direct Impacts\n{pro1_out}\n\n### Pro 2: Systemic Impacts\n{pro2_out}",
             counterarguments=f"### Con 1: Direct Risks\n{con1_out}\n\n### Con 2: Systemic Risks\n{con2_out}",
             evidence_analysis=dummy_score,
-            contradictions="*Not generated in Debate Architecture.*",
-            critical_evaluation="*Not generated in Debate Architecture.*",
-            research_gaps="*Not generated in Debate Architecture.*",
+            contradictions=contradictions,
+            critical_evaluation=critical_evaluation,
+            research_gaps=research_gaps,
             final_insight=final_insight,
             papers=papers[:10],
         )
         yield {"event": "result", "data": result.model_dump(mode="json")}
+
+    async def chat(self, request):
+        """Handle follow-up research questions using the moderator."""
+        prompt = f"""
+        You are the ResearchPilot Moderator. You just completed an in-depth research analysis.
+        
+        RESEARCH CONTEXT:
+        {request.context}
+        
+        USER FOLLOW-UP QUESTION:
+        {request.message}
+        
+        CHAT HISTORY:
+        {json.dumps(request.history)}
+        
+        Please answer the user's question accurately using ONLY the research context provided. 
+        If the information is not in the context, say so politely.
+        Maintain a professional, helpful tone. Use Markdown.
+        """
+        
+        response, _ = await self.moderator.moderate(
+            "Follow-up Exploration", 
+            prompt, "", "", "" # Reusing moderate for a single-prompt chat for now
+        )
+        return response
+
+    async def generate_debate_script(self, context: str) -> List[dict]:
+        """Generate a conversational, podcast-style dialogue between two AI agents."""
+        prompt = f"""
+        You are a Screenwriter for a high-end academic podcast. 
+        Create a fascinating, back-and-forth dialogue between two experts:
+        1. **Alloy (The Lead)**: Analytical, clear, and structured.
+        2. **Shimmer (The Explorer)**: Curious, challenges assumptions, and looks for edge cases.
+
+        RESEARCH CONTEXT:
+        {context}
+
+        INSTRUCTIONS:
+        - Format the output as a JSON list of objects: [{{"speaker": "Alloy", "text": "..."}}, {{"speaker": "Shimmer", "text": "..."}}]
+        - Keep each speaker's turn to 2-3 sentences max.
+        - The conversation should be engaging, simplified but accurate, and feel like a real podcast.
+        - Total 10-12 turns.
+        """
+        
+        response, _ = await self.moderator.moderate(
+            "Podcast Scripting", 
+            prompt, "", "", ""
+        )
+        
+        try:
+            # Basic parsing of JSON from Markdown-wrapped or raw text
+            json_str = response.strip()
+            if "```json" in json_str:
+                json_str = json_str.split("```json")[1].split("```")[0].strip()
+            elif "```" in json_str:
+                json_str = json_str.split("```")[1].split("```")[0].strip()
+            
+            return json.loads(json_str)
+        except Exception:
+            # Fallback if AI fails to format correctly
+            return [{"speaker": "Alloy", "text": "Let's discuss this research discovery."}, 
+                    {"speaker": "Shimmer", "text": "I'm ready to dive into the details."}]
 
     async def _retrieve_papers(
         self, request: ResearchRequest, refined_question: str

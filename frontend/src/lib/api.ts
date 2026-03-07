@@ -73,6 +73,7 @@ export function analyzeResearch(
                     }
                 }
             }
+            onDone();
         } catch (err: unknown) {
             if (err instanceof Error && err.name === 'AbortError') return;
             onError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -96,5 +97,15 @@ export async function fetchPapers(source?: string): Promise<unknown[]> {
     const url = source ? `${API_BASE}/papers/?source=${source}` : `${API_BASE}/papers/`;
     const res = await fetch(url);
     if (!res.ok) return [];
+    return res.json();
+}
+/** Send a follow-up chat message about the research */
+export async function sendChatMessage(request: { query: string; context: string; message: string; history: any[] }): Promise<{ response: string }> {
+    const res = await fetch(`${API_BASE}/research/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+    });
+    if (!res.ok) throw new Error('Chat failed');
     return res.json();
 }

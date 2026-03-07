@@ -40,19 +40,45 @@ async def store_paper(paper: ResearchPaper, embedding: List[float]) -> Optional[
         print(f"[DB] Error storing paper: {e}")
     return None
 
+async def store_chunk(title: str, content: str, embedding: List[float], user_id: str) -> bool:
+    client = get_supabase()
+    if not client:
+        return False
+    try:
+        client.table("research_papers").insert({
+            "title": title,
+            "abstract": content[:200] + "...",
+            "content": content,
+            "source": "personal",
+            "embedding": embedding,
+            "user_id": user_id
+        }).execute()
+        return True
+    except Exception as e:
+        print(f"[DB] Error storing personal chunk: {e}")
+        return False
 
-async def similarity_search(embedding: List[float], limit: int = 10) -> List[ResearchPaper]:
+
+async def similarity_search(embedding: List[float], limit: int = 10, user_id: Optional[str] = None) -> List[ResearchPaper]:
     client = get_supabase()
     if not client:
         return []
     try:
+        # Note: In a production app, the match_papers RPC should handle user_id filtering
+        # For simplicity, we search and then filter if user_id is provided, 
+        # but better to do it in the RPC.
         result = client.rpc("match_papers", {
             "query_embedding": embedding,
             "match_count": limit,
             "match_threshold": 0.5,
         }).execute()
+        
         papers = []
         for row in result.data or []:
+            # Filtering personal chunks to only those belonging to the user
+            if row.get("source") == "personal" and row.get("user_id") != user_id:
+                continue
+                
             papers.append(ResearchPaper(
                 id=str(row.get("id", "")),
                 title=row.get("title", ""),
@@ -103,6 +129,9 @@ async def store_analysis(query_id: str, analysis: dict) -> bool:
             "counter_arguments": analysis.get("counterarguments", ""),
             "evidence_score": analysis.get("evidence_score", 0),
             "final_insight": analysis.get("final_insight", ""),
+            "contradictions": analysis.get("contradictions", ""),
+            "critical_evaluation": analysis.get("critical_evaluation", ""),
+            "research_gaps": analysis.get("research_gaps", ""),
         }).execute()
         return True
     except Exception as e:
@@ -123,4 +152,4 @@ async def get_queries(limit: int = 20, user_id: Optional[str] = None) -> List[di
         return result.data or []
     except Exception as e:
         print(f"[DB] Error fetching queries: {e}")
-        return []
+    return []

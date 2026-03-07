@@ -3,10 +3,13 @@ ResearchPilot – FastAPI Application Entry Point
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from config import get_settings
-from routes import research, papers, queries
 
+# Initialize settings/env vars before any other imports that might depend on them
 settings = get_settings()
+
+from routes import research, papers, queries, library
 
 app = FastAPI(
     title="ResearchPilot API",
@@ -25,10 +28,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static Files (for generated audio)
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Routers
 app.include_router(research.router, prefix="/research", tags=["Research"])
 app.include_router(papers.router, prefix="/papers", tags=["Papers"])
 app.include_router(queries.router, prefix="/queries", tags=["Queries"])
+app.include_router(library.router, prefix="/library", tags=["Library"])
 
 
 @app.get("/", tags=["health"])
