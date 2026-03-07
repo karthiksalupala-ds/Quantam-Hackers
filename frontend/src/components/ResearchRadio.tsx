@@ -127,7 +127,7 @@ export default function ResearchRadio({ context }: ResearchRadioProps) {
                         <Radio className={`w-5 h-5 text-brand-400 ${isPlaying ? 'animate-pulse' : ''}`} />
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-white uppercase tracking-widest">Research Radio</h3>
+                        <h3 className="text-sm font-bold text-white uppercase tracking-widest">AI Debate</h3>
                         <p className="text-[10px] text-brand-400 font-bold uppercase opacity-60">Live Academic Debate</p>
                     </div>
                 </div>
@@ -218,8 +218,8 @@ export default function ResearchRadio({ context }: ResearchRadioProps) {
                         <button
                             onClick={toggleInterruption}
                             className={`flex items-center gap-4 px-4 py-2 rounded-full border transition-all cursor-pointer group ${isListening
-                                    ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                                    : 'bg-white/5 border-white/10 hover:border-brand-500/30'
+                                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                                : 'bg-white/5 border-white/10 hover:border-brand-500/30'
                                 }`}
                         >
                             <Mic className={`w-4 h-4 ${isListening ? 'animate-ping' : 'text-brand-400 opacity-60'}`} />
