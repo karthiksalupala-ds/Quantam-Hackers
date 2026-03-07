@@ -16,6 +16,10 @@ from retrieval.semantic_scholar_client import search_semantic_scholar
 from retrieval.pubmed_client import search_pubmed
 from retrieval.google_search_client import search_google
 from retrieval.vector_store import store_papers, search_papers
+from retrieval.openalex_client import search_openalex
+from retrieval.core_client import search_core
+from retrieval.crossref_client import search_crossref
+from retrieval.duckduckgo_client import search_duckduckgo
 import database
 from database import similarity_search
 from openai import AsyncOpenAI
@@ -135,6 +139,39 @@ class ResearchOrchestrator:
         elif mode == "skeptic":
             self.critic.temperature = 0.5
             self.critic.system_prompt += "\nBe extremely critical of the evidence quality. Identify potential biases and industry funding in paper sources."
+        
+        # ── STEP 0: Cache Check ────────────────────────────────
+        yield self._step_event("cache_lookup", "running", "⚡ Checking neural cache for existing analysis...")
+        cached = await database.get_cached_analysis(original_query)
+        if cached:
+            yield self._step_event("cache_hit", "done", "🎯 Cache Hit! Retrieving pre-computed intelligence from vault.", {"query_id": cached["query_id"]})
+            await asyncio.sleep(0.8) # Better UX to show it's "doing" something
+            
+            # Yield the cached result
+            analysis = cached["analysis"]
+            result = AnalysisResult(
+                query_id=cached["query_id"],
+                original_query=original_query,
+                refined_question=cached["refined_query"],
+                research_strategy="Retrieved from neural cache. This analysis was previously computed and validated.",
+                key_evidence="Evidence retrieved from historical analysis session.",
+                supporting_arguments=analysis.get("supporting_arguments", ""),
+                counterarguments=analysis.get("counter_arguments", ""),
+                evidence_analysis=EvidenceScore(
+                    overall_score=analysis.get("evidence_score", 8.0),
+                    paper_count=0,
+                    source_diversity=0.0,
+                    consistency_score=0.0,
+                    label="Cached"
+                ),
+                contradictions=analysis.get("contradictions", ""),
+                critical_evaluation=analysis.get("critical_evaluation", ""),
+                research_gaps=analysis.get("research_gaps", ""),
+                final_insight=analysis.get("final_insight", ""),
+                papers=[] # Cached results don't currently store sub-papers, but we could add them if needed
+            )
+            yield {"event": "result", "data": result.model_dump(mode="json")}
+            return
         
         # ── STEP 1: Query Refinement ────────────────────────────
         yield self._step_event("query_refinement", "running", f"🔍 Refining Query ({mode.capitalize()} Mode)...", provider="openai")
@@ -348,6 +385,12 @@ class ResearchOrchestrator:
             tasks.append(search_semantic_scholar(refined_question, per_source))
         if "pubmed" in sources:
             tasks.append(search_pubmed(refined_question, per_source))
+        
+        # New sources
+        tasks.append(search_openalex(refined_question, per_source))
+        tasks.append(search_core(refined_question, per_source))
+        tasks.append(search_crossref(refined_question, per_source))
+        tasks.append(search_duckduckgo(refined_question, per_source))
         
         # Always add Google search for "top rated articles" as requested
         tasks.append(search_google(refined_question, limit=max(3, request.max_papers // 3)))

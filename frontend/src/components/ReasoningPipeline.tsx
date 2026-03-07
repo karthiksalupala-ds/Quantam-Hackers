@@ -135,7 +135,7 @@ export default function ReasoningPipeline({ steps, isActive }: ReasoningPipeline
                     {/* Full Line Connector Background */}
                     <div className="absolute top-4 left-4 right-4 h-[1px] bg-white/5 z-0" />
 
-                    {PIPELINE_STEPS.filter(def => def.id !== 'query_refinement').map((def, idx, array) => {
+                    {PIPELINE_STEPS.map((def, idx, array) => {
                         const step = steps[def.id];
                         const status: StepStatus = step?.status ?? 'pending';
                         const isRunning = status === 'running';

@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     # Research APIs
     semantic_scholar_api_key: str = ""
     ncbi_api_key: str = ""
+    core_api_key: str = ""
+    contact_email: str = "researchpilot@example.com"  # For polite pool headers
 
     # App
     demo_mode: bool = False

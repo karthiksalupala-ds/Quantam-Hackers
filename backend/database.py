@@ -153,3 +153,44 @@ async def get_queries(limit: int = 20, user_id: Optional[str] = None) -> List[di
     except Exception as e:
         print(f"[DB] Error fetching queries: {e}")
     return []
+
+
+async def get_cached_analysis(user_query: str) -> Optional[dict]:
+    """Checks if an analysis already exists for a similar query."""
+    client = get_supabase()
+    if not client:
+        return None
+    try:
+        # Find the query first (case-insensitive)
+        query_res = client.table("research_queries")\
+            .select("id, refined_query")\
+            .ilike("user_query", user_query)\
+            .order("timestamp", desc=True)\
+            .limit(1)\
+            .execute()
+        
+        if not query_res.data:
+            return None
+            
+        query_id = query_res.data[0]["id"]
+        refined_query = query_res.data[0]["refined_query"]
+        
+        # Get the analysis for this query
+        analysis_res = client.table("research_analysis")\
+            .select("*")\
+            .eq("query_id", query_id)\
+            .limit(1)\
+            .execute()
+            
+        if not analysis_res.data:
+            return None
+            
+        analysis = analysis_res.data[0]
+        return {
+            "query_id": query_id,
+            "refined_query": refined_query,
+            "analysis": analysis
+        }
+    except Exception as e:
+        print(f"[DB] Cache lookup error: {e}")
+    return None

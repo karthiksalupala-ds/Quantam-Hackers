@@ -60,6 +60,7 @@ export interface ResearchRequest {
 
 // Pipeline step definitions (ordered)
 export const PIPELINE_STEPS: Array<{ id: string; icon: string; label: string }> = [
+    { id: 'cache_lookup', icon: '⚡', label: 'Neural Cache Lookup' },
     { id: 'query_refinement', icon: '🔍', label: 'Refining Research Query' },
     { id: 'retrieval', icon: '📚', label: 'Retrieving Research Papers' },
     { id: 'debate', icon: '⚖️', label: 'Conducting AI Debate (Pro vs Con)' },
